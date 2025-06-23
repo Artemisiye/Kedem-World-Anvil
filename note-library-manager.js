@@ -40,7 +40,9 @@ export function setupNoteLibrary(loadingOverlay, noteList, noteContentElement, n
             ul.className = 'space-y-1';
             ul.classList.add('root-ul'); // Add root-ul class for easier traversal
         } else {
-            ul.classList.add('folder-list-indent');
+            // This indent class now applies to the ul itself, which is nested inside the li of the parent folder
+            // Its styling will be for the border and padding, the background highlight is on the <a> or <div>
+            ul.classList.add('folder-item-sub-list');
         }
 
         // Sort folders and files alphabetically
@@ -56,18 +58,17 @@ export function setupNoteLibrary(loadingOverlay, noteList, noteContentElement, n
             li.className = 'folder-item';
 
             const folderToggle = document.createElement('div');
-            folderToggle.className = 'note-list-folder-toggle flex items-center cursor-pointer px-2 py-1 rounded-lg text-slate-100 font-semibold transition-colors duration-200 hover:bg-slate-700';
-            folderToggle.innerHTML = `<span class="toggle-icon mr-2">▶</span> ${folderName}`;
+            folderToggle.className = 'note-list-folder-toggle flex items-center cursor-pointer px-2 py-1 rounded-lg text-slate-100 transition-colors duration-200 hover:bg-slate-700';
+            folderToggle.innerHTML = `<svg class="toggle-icon w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg><span>${folderName}</span>`;
             li.appendChild(folderToggle);
 
-            // Add visual indent for sub-folders
-            const subList = createList(data.folders[folderName], document.createElement('ul')); // Pass new ul for recursion
+            const subList = createList(data.folders[folderName], document.createElement('ul'));
             subList.classList.add('hidden');
             li.appendChild(subList);
 
             folderToggle.addEventListener('click', () => {
                 subList.classList.toggle('hidden');
-                folderToggle.querySelector('.toggle-icon').textContent = subList.classList.contains('hidden') ? '▶' : '▼';
+                folderToggle.querySelector('.toggle-icon').classList.toggle('rotated'); // Add/remove rotated class for icon
             });
             ul.appendChild(li);
         });
@@ -91,27 +92,30 @@ export function setupNoteLibrary(loadingOverlay, noteList, noteContentElement, n
         return ul;
     }
 
-    noteList.appendChild(createList(organizedFiles, null)); // Start recursion with null for parentUl
+    noteList.appendChild(createList(organizedFiles, null));
 
 
-    // Initial search setup (if needed, currently not connected)
     const noteSearchInput = document.getElementById('note-search-input');
     if (noteSearchInput) {
         noteSearchInput.addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase();
-            // Implement search logic here, e.g., filter the displayed list
-            console.log("Search term:", searchTerm); // Placeholder
+            console.log("Search term:", searchTerm);
+            // Re-render the note list based on search term
+            const filteredFiles = noteFiles.filter(file => file.toLowerCase().includes(searchTerm));
+            noteList.innerHTML = ''; // Clear current list
+            noteList.appendChild(createList(buildFolderStructure(filteredFiles), null));
+            // Trigger navigation logic to re-apply active state if needed after filter
+            window.dispatchEvent(new HashChangeEvent('hashchange'));
         });
     }
 
-    // Set initial display for the main title and content 
     if (noteDisplayMainTitle) noteDisplayMainTitle.textContent = 'Note Library';
     if (noteContentElement) noteContentElement.innerHTML = '<p class="text-slate-500">Select a note from the left panel to view its content.</p>';
 }
 
 export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentElement, noteDisplayMainTitle) {
     if (loadingOverlay) loadingOverlay.classList.remove('hidden');
-    if (noteContentElement) noteContentElement.innerHTML = ''; // Clear previous content
+    if (noteContentElement) noteContentElement.innerHTML = '';
 
     const githubBasePath = `https://raw.githubusercontent.com/Artemisiye/Kedem-World-Anvil/main/notes/`;
     const fullUrl = `${githubBasePath}${filePath}`;
@@ -124,84 +128,96 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
         }
         let markdownText = await response.text();
 
-        // Set raw file path on an element, if needed (e.g., for edit buttons)
-        // No longer using noteTitleElement for this; if you need it, attach to noteContentElement or noteDisplayMainTitle
-        // if (noteTitleElement) noteTitleElement.dataset.rawfilepath = filePath;
-
-        // Set the main display title
         if (noteDisplayMainTitle) noteDisplayMainTitle.textContent = displayName;
-        // The smaller noteTitleElement is now completely removed from the UI and JS logic
-        // if (noteTitleElement) noteTitleElement.style.display = 'none';
-
 
         // --- PRE-PROCESSING FOR OBSIDIAN METADATA AND CUSTOM PROPERTIES ---
         const processedLines = [];
         const lines = markdownText.split('\n');
         let inFrontmatter = false;
         let foundFirstDashLine = false;
+        let propertiesHtml = ''; // Accumulate HTML for properties box
+        let hasProperties = false;
 
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i];
 
-            // Toggle frontmatter state
             if (line.trim() === '---') {
                 if (!foundFirstDashLine) {
                     inFrontmatter = true;
                     foundFirstDashLine = true;
-                    // Add a horizontal rule to visually separate metadata
-                    processedLines.push('<hr class="my-2 border-slate-300">');
-                    continue;
+                    continue; // Skip the first '---' line
                 } else if (inFrontmatter) {
                     inFrontmatter = false;
-                    processedLines.push('<hr class="my-2 border-slate-300">');
-                    continue;
+                    continue; // Skip the second '---' line
                 }
             }
 
             if (inFrontmatter) {
-                // Process lines within frontmatter
+                // Process lines within frontmatter for properties box
                 if (line.startsWith('aliases:')) {
                     const aliases = line.substring('aliases:'.length).trim();
                     if (aliases) {
-                        processedLines.push(`<p class="metadata-line"><strong>Aliases:</strong> ${markedInstance.parseInline(aliases.replace(/-/g, ''))}</p>`);
+                        // Remove leading hyphen from alias if it's a list
+                        const cleanAliases = aliases.replace(/^- /, '');
+                        propertiesHtml += `
+                            <div class="properties-item">
+                                <div class="properties-label">Aliases</div>
+                                <div class="properties-value">${markedInstance.parseInline(cleanAliases)}</div>
+                            </div>
+                        `;
+                        hasProperties = true;
                     }
                 } else if (line.startsWith('tags:')) {
                     const tagsContent = line.substring('tags:'.length).trim();
-                    // Split tags by space, comma, or hyphen, then filter out empty strings/hyphens
                     const tags = tagsContent.split(/[\s,-]+/).map(t => t.trim()).filter(t => t && t !== '-');
                     if (tags.length > 0) {
-                        processedLines.push(`<p class="metadata-line"><strong>Tags:</strong> ${tags.map(tag => `<span class="tag-chip">${tag.replace('#', '')}</span>`).join('')}</p>`);
+                        propertiesHtml += `
+                            <div class="properties-item">
+                                <div class="properties-label">Tags</div>
+                                <div class="properties-value">
+                                    ${tags.map(tag => `<span class="tag-chip">${tag.replace('#', '')}</span>`).join('')}
+                                </div>
+                            </div>
+                        `;
+                        hasProperties = true;
                     }
-                } else if (line.includes('::')) {
+                }
+                // Add more specific property handlers here if needed, or a generic one
+                 else if (line.includes('::')) {
                     const [propName, propValue] = line.split('::', 2).map(s => s.trim());
                     if (propName && propValue) {
-                        processedLines.push(`<p class="property-line"><strong>${propName}:</strong> ${markedInstance.parseInline(propValue)}</p>`);
+                        propertiesHtml += `
+                            <div class="properties-item">
+                                <div class="properties-label">${propName.charAt(0).toUpperCase() + propName.slice(1)}</div>
+                                <div class="properties-value">${markedInstance.parseInline(propValue)}</div>
+                            </div>
+                        `;
+                        hasProperties = true;
                     }
-                } else if (line.startsWith('## Offerings:') || line.startsWith('## Favors:') || line.startsWith('## Starting Boon:')) {
-                    // Specific headers for deity-like notes
-                    processedLines.push(`<h4 class="text-md font-semibold text-teal-700 mt-3 mb-1">${line.substring(3).trim()}</h4>`);
-                } else if (line.startsWith('- ')) {
-                    // List items within metadata (e.g., under Offerings/Favors)
-                    processedLines.push(`<p class="text-sm ml-4">• ${markedInstance.parseInline(line.substring(2).trim())}</p>`);
-                } else if (line.startsWith('BaseValue:')) {
-                    // Example of a specific property like BaseValue: 100
-                    processedLines.push(`<p class="property-line"><strong>${line.split(':')[0].trim()}:</strong> ${line.split(':')[1].trim()}</p>`);
-                } else if (line.trim() !== '') {
-                    // Any other non-empty lines in the frontmatter block are treated as metadata paragraphs
-                    processedLines.push(`<p class="metadata-line">${markedInstance.parseInline(line.trim())}</p>`);
                 }
             } else {
                 // If not in frontmatter, add the line as is for standard markdown parsing
                 processedLines.push(line);
             }
         }
-        markdownText = processedLines.join('\n');
 
+        // Conditionally add the properties box if any properties were found
+        let finalContentHtml = '';
+        if (hasProperties) {
+            finalContentHtml += `
+                <div class="properties-box mb-6">
+                    <div class="properties-box-title">
+                        <svg class="w-4 h-4 mr-1 text-slate-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M11.49 3.17c-.325-.325-.79-.5-1.276-.5H9.234c-.486 0-.95.175-1.276.5L4.475 7.127a3.003 3.003 0 00-1.077 1.772l-.71 3.551A.5.5 0 003 13.5h14a.5.5 0 00.312-.92l-.71-3.551a3.003 3.003 0 00-1.077-1.772l-3.743-3.957zM10 15a1 1 0 100 2 1 1 0 000-2z" clip-rule="evenodd"></path></svg>
+                        Properties
+                    </div>
+                    ${propertiesHtml}
+                </div>
+            `;
+        }
+        finalContentHtml += markedInstance.parse(processedLines.join('\n')); // Join remaining lines for main content
 
-        // Render the processed Markdown content
-        if (noteContentElement) noteContentElement.innerHTML = markedInstance.parse(markdownText);
+        if (noteContentElement) noteContentElement.innerHTML = finalContentHtml;
 
-        // Add event listeners to internal wikilinks for SPA-like navigation
         if (noteContentElement) {
             noteContentElement.querySelectorAll('a.internal-wikilink').forEach(link => {
                 link.addEventListener('click', (e) => {
@@ -218,7 +234,6 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
     } catch (error) {
         console.error('Error fetching Markdown file:', error);
         if (noteDisplayMainTitle) noteDisplayMainTitle.textContent = `Error loading note`;
-        // No longer setting noteTitleElement text or style on error
         if (noteContentElement) noteContentElement.innerHTML = `<p class="text-red-600">Could not load note. Please ensure the file path is correct and the file is publicly accessible.</p><p>Error: ${error.message}</p>`;
     } finally {
         if (loadingOverlay) loadingOverlay.classList.add('hidden');

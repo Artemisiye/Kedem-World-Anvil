@@ -7,22 +7,33 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Marked.js for Markdown parsing (MUST be loaded before markdown-parser.js) -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    
+
     <!-- Fonts and general styles -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <style>
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc; /* slate-50 */
             color: #334155; /* slate-700 */
         }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #e2e8f0; } /* slate-200 */
-        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; } /* slate-400 */
-        ::-webkit-scrollbar-thumb:hover { background: #64748b; } /* slate-500 */
+        /* Custom scrollbar for better appearance, potentially overlay on Webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px; /* For horizontal scrollbars */
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent; /* Make track transparent for overlay effect */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8; /* slate-400 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* slate-600 */
+        }
         /* Active nav link styling for main pages/sections */
         .nav-link.active {
             background-color: #fbbf24; /* amber-400 */
@@ -56,33 +67,57 @@
         .markdown-content a.wikilink:hover {
             text-decoration: underline;
         }
-        /* Specific styling for tags/metadata lines within markdown-content */
-        .markdown-content .metadata-line {
+        /* Specific styling for properties box */
+        .properties-box {
+            background-color: #f1f5f9; /* slate-100 */
+            border: 1px solid #e2e8f0; /* slate-200 */
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .properties-box-title {
             font-size: 0.875rem; /* text-sm */
-            color: #64748b; /* slate-500 */
-            font-style: italic;
-            margin-bottom: 0.25rem;
-            line-height: 1.2;
-        }
-        .markdown-content .tag-chip {
-            display: inline-block;
-            background-color: #e2e8f0; /* slate-200 */
-            color: #334155; /* slate-800 */
-            font-size: 0.75rem; /* text-xs */
-            font-weight: 500; /* font-medium */
-            padding: 0.2rem 0.6rem;
-            border-radius: 9999px; /* rounded-full */
-            margin-right: 0.4rem;
-            margin-bottom: 0.4rem;
-            white-space: nowrap;
-        }
-        .markdown-content .property-line {
-            font-size: 0.875rem; /* text-sm */
-            margin-bottom: 0.25rem;
-        }
-        .markdown-content .property-line strong {
             font-weight: 600;
+            color: #475569; /* slate-600 */
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+        }
+        .properties-item {
+            display: flex;
+            align-items: flex-start; /* Align items to start for multi-line values */
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem; /* text-sm */
+            color: #334155; /* slate-700 */
+        }
+        .properties-item:last-child {
+            margin-bottom: 0;
+        }
+        .properties-label {
+            font-weight: 500; /* font-medium */
             color: #1e293b; /* slate-800 */
+            width: 80px; /* Fixed width for labels */
+            flex-shrink: 0; /* Prevent label from shrinking */
+            margin-right: 0.5rem;
+            padding-top: 0.125rem; /* Small padding for vertical alignment */
+        }
+        .properties-value {
+            flex-grow: 1;
+            display: flex; /* For tags, to allow flex wrapping */
+            flex-wrap: wrap; /* Allow tags to wrap */
+            gap: 0.25rem; /* Gap between tags */
+        }
+        .tag-chip {
+            display: inline-flex; /* Use inline-flex for better alignment */
+            align-items: center;
+            background-color: #cbd5e1; /* slate-300 */
+            color: #1e293b; /* slate-800 */
+            font-size: 0.75rem; /* text-xs */
+            font-weight: 500;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px; /* Slightly less rounded than full for a squarer look */
+            line-height: 1; /* Adjust line height for better vertical centering */
+            height: 1.5rem; /* Fixed height for consistent tag size */
         }
         .loading-overlay {
             position: fixed;
@@ -101,11 +136,16 @@
         /* Styling for the note list items to fit the sidebar */
         .note-list-item-link {
             display: block;
-            padding: 0.5rem 1rem; /* px-4 py-2 */
-            border-radius: 0.5rem; /* rounded-lg */
+            padding: 0.5rem 0.5rem; /* Adjusted padding to extend highlight */
+            border-radius: 0.25rem; /* Slightly less rounded */
             color: #f1f5f9; /* slate-100 */
-            transition-colors duration-200; 
+            transition-colors duration-200;
             text-decoration: none;
+            /* New: Text overflow properties */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.5; /* Ensure good line height */
         }
         .note-list-item-link:hover {
             background-color: #334155; /* slate-700 */
@@ -113,25 +153,36 @@
         .note-list-item-link.active-note {
             background-color: #fbbf24; /* amber-400 */
             color: #1e293b; /* slate-800 */
-            font-weight: 600;
+            font-weight: 400; /* No bold */
         }
         .note-list-folder-toggle {
             display: flex;
             align-items: center;
             cursor: pointer;
-            padding: 0.5rem 1rem; /* px-4 py-2 */
-            border-radius: 0.5rem; /* rounded-lg */
+            padding: 0.5rem 0.5rem; /* Adjusted padding */
+            border-radius: 0.25rem;
             color: #f1f5f9; /* slate-100 */
-            transition-colors duration-200; 
-            font-weight: 600;
-            user-select: none; /* Prevent text selection on toggle */
+            transition-colors duration-200;
+            font-weight: 400; /* No bold */
+            user-select: none;
+            /* New: Text overflow properties */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.5; /* Ensure good line height */
         }
         .note-list-folder-toggle:hover {
              background-color: #334155; /* slate-700 */
         }
         .toggle-icon {
             margin-right: 0.5rem; /* mr-2 */
-            font-size: 0.875rem; /* text-sm */
+            width: 1rem; /* Fixed width for icon */
+            flex-shrink: 0;
+            transform-origin: center;
+            transition: transform 0.15s ease-in-out;
+        }
+        .toggle-icon.rotated {
+            transform: rotate(90deg);
         }
         .folder-list-indent {
             margin-left: 1rem; /* ml-4 */
@@ -146,7 +197,26 @@
             display: block;
             padding: 0.5rem 1rem;
             border-radius: 0.5rem;
-            user-select: none; /* Prevent text selection */
+            user-select: none;
+        }
+
+        /* Adjust the note list container's padding to allow highlight to extend */
+        #note-list-container {
+            padding-right: 0.5rem; /* Keep some space for scrollbar */
+        }
+
+        /* Ensure the folder list indent doesn't push the highlight box */
+        .folder-list-indent {
+            /* We need to re-think how the indent is applied,
+               or make the highlight background span the full width.
+               For now, the padding on link/toggle extends it. */
+            padding-left: 0; /* Remove padding here, it's on the item links */
+            margin-left: 1.25rem; /* Adjusted indent to compensate for removed padding */
+            border-left: none; /* Removing the border to prevent it cutting the highlight */
+        }
+        .folder-item > ul { /* Target the sub-lists within folders for the visual indent */
+            border-left: 1px solid #475569; /* Re-apply border to sub-lists */
+            padding-left: 0.5rem; /* Add padding to sub-lists */
         }
     </style>
 </head>
@@ -163,7 +233,7 @@
             <div class="h-16 flex items-center justify-center border-b border-slate-700">
                 <a href="explorer.html#world" id="home-link" class="text-2xl font-bold text-amber-400 hover:text-amber-300 transition-colors duration-200">Kedem Anvil</a>
             </div>
-            
+
             <nav class="flex-none px-4 py-4 space-y-2">
                 <!-- Only link to the Explorer page -->
                 <a href="explorer.html#world" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">The World (Explorer)</a>
@@ -172,9 +242,9 @@
             </nav>
 
             <!-- Note-specific sidebar content below main navigation -->
-            <div class="flex-auto p-4 overflow-y-auto border-t border-slate-700"> 
+            <div class="flex-auto p-4 overflow-y-auto border-t border-slate-700" id="note-list-container">
                 <h3 class="text-xl font-bold text-teal-300 mb-3">Notes</h3>
-                <ul id="note-list" class="space-y-1"> 
+                <ul id="note-list" class="space-y-1">
                     <!-- Note list will be injected here by JavaScript -->
                 </ul>
             </div>
@@ -191,7 +261,7 @@
             <div class="grid grid-cols-3 gap-6 h-full">
                 <!-- Main Note Display Area (2/3 width) -->
                 <div class="col-span-2 flex flex-col h-full">
-                    <h2 id="note-display-title" class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">Select a Note</h2> 
+                    <h2 id="note-display-title" class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">Select a Note</h2>
                     <div id="note-content" class="markdown-content bg-white p-6 rounded-xl shadow-sm text-base text-slate-700 leading-relaxed flex-1 overflow-y-auto">
                         <p>Select a note from the left panel to display its content.</p>
                     </div>
@@ -217,8 +287,8 @@
     <!-- Firebase and other core modules loaded at the end of the body for DOM readiness -->
     <script type="module">
         // Export noteFiles to the global window object for marked.js
-        import { noteFiles } from './data-constants.js'; 
-        window.noteFiles = noteFiles; 
+        import { noteFiles } from './data-constants.js';
+        window.noteFiles = noteFiles;
     </script>
     <script type="module" src="./firebase-init.js"></script>
     <script type="module" src="./markdown-parser.js"></script>
