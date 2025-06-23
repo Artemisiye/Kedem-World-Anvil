@@ -3,10 +3,7 @@
 import { noteFiles } from './data-constants.js'; 
 import { markedInstance } from './markdown-parser.js'; 
 
-// setupNoteLibrary now accepts the DOM elements as arguments from ui-manager.js
-export function setupNoteLibrary(loadingOverlay, noteList, noteTitle, noteContent, noteDisplayMainTitle) { 
-    // These elements are now guaranteed to be passed by ui-manager.js after the DOM is ready.
-
+export function setupNoteLibrary(loadingOverlay, noteList, noteTitleElement, noteContentElement, noteDisplayMainTitle) { 
     noteList.innerHTML = ''; 
 
     // Function to build the folder structure recursively
@@ -39,10 +36,10 @@ export function setupNoteLibrary(loadingOverlay, noteList, noteTitle, noteConten
 
     function createList(data) {
         const ul = document.createElement('ul');
-        ul.className = 'ml-0 space-y-1'; // Base class for nested lists
+        ul.className = 'ml-0 space-y-1'; 
 
         // Add a class to the root UL for easier traversal in UI manager
-        if (noteList === ul) { // Check if this is the very first UL being created
+        if (noteList === ul) { 
             ul.classList.add('root-ul');
         }
 
@@ -78,18 +75,14 @@ export function setupNoteLibrary(loadingOverlay, noteList, noteTitle, noteConten
         sortedFilePaths.forEach(file => {
             const listItem = document.createElement('li');
             const link = document.createElement('a');
-            // IMPORTANT: For internal note-library navigation, use hash only to prevent full page reload
             link.href = `#note-library:${file}`; 
             link.dataset.filepathRaw = file; 
             const displayName = file.split('/').pop().replace('.md', '').replace(/([A-Z])/g, ' $1').trim(); 
             link.textContent = displayName;
             link.className = 'block px-4 py-2 rounded-lg text-slate-700 hover:bg-slate-200 transition-colors duration-200';
-            link.addEventListener('click', async (e) => {
+            link.addEventListener('click', (e) => {
                 e.preventDefault();
-                // Update URL hash without page reload for smooth navigation
-                history.pushState(null, '', `note-library.html#note-library:${file}`); // Update actual URL in history
-                // UI manager's hashchange listener will pick this up and call fetchAndDisplayNote
-                // Manually trigger navigation logic to ensure update, as history.pushState doesn't fire hashchange
+                history.pushState(null, '', `note-library.html#note-library:${file}`); 
                 window.dispatchEvent(new HashChangeEvent('hashchange')); 
             });
             listItem.appendChild(link);
@@ -115,9 +108,7 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteTitleEle
         
         noteTitleElement.dataset.rawfilepath = filePath; 
 
-        // Update the main H2 title of the page with the note's display name
         noteDisplayMainTitle.textContent = displayName;
-        // The H3 for "Select a Note" can be hidden or removed once a note is loaded
         noteTitleElement.style.display = 'none'; 
 
 
@@ -178,7 +169,6 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteTitleEle
         markdownText = processedLines.join('\n'); 
 
 
-        // Note: noteTitle (the H3) is now hidden. noteDisplayMainTitle (the H2) is the actual title.
         noteContentElement.innerHTML = markedInstance.parse(markdownText); 
         
         noteContentElement.querySelectorAll('a.internal-wikilink').forEach(link => { 
@@ -187,7 +177,6 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteTitleEle
                 const targetFilePath = e.target.dataset.filepath;
                 if (targetFilePath) {
                     history.pushState(null, '', `note-library.html#note-library:${targetFilePath}`); 
-                    // Manually trigger navigation logic to ensure update, as history.pushState doesn't fire hashchange
                     window.dispatchEvent(new HashChangeEvent('hashchange')); 
                 }
             });
@@ -195,9 +184,9 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteTitleEle
         
     } catch (error) {
         console.error('Error fetching Markdown file:', error);
-        noteDisplayMainTitle.textContent = `Error loading ${displayName}`; // Update main title on error
-        noteTitleElement.style.display = 'block'; // Show H3 back perhaps
-        noteTitleElement.textContent = `Error loading: ${displayName}`; // Show error in H3 if desired
+        noteDisplayMainTitle.textContent = `Error loading note`; 
+        noteTitleElement.style.display = 'block'; 
+        noteTitleElement.textContent = `Error loading: ${displayName}`; 
         noteContentElement.innerHTML = `<p class="text-red-600">Could not load note. Please ensure the file path is correct and the file is publicly accessible.</p><p>Error: ${error.message}</p>`; 
     } finally {
         loadingOverlay.classList.add('hidden');
