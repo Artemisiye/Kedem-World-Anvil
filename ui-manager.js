@@ -1,13 +1,16 @@
 // ui-manager.js
 import { db, currentUserId, auth } from './firebase-init.js'; // Import Firebase instances and userId
 import { initializeDeityManager } from './deity-manager.js'; // Import deity manager
-import { setupLoreLibrary } from './lore-library-manager.js'; // Import lore library manager
+import { setupLoreLibrary, fetchAndDisplayMarkdown } from './lore-library-manager.js'; // Import lore library manager and fetch function
 
 // Declare UI elements globally within the module scope
 const navLinks = document.querySelectorAll('.nav-link');
 const contentSections = document.querySelectorAll('.content-section');
 const userIdDisplay = document.getElementById('user-id-display');
 const loadingOverlay = document.getElementById('loading-overlay');
+const loreNoteTitle = document.getElementById('lore-note-title');
+const loreNoteContent = document.getElementById('lore-note-content');
+const loreNotesList = document.getElementById('lore-notes-list'); // Needed for highlighting in deep links
 
 export function setupUI() {
     // Update User ID display once authenticated
@@ -18,6 +21,14 @@ export function setupUI() {
     });
 
     // Handle navigation
+    const homeLink = document.getElementById('home-link'); 
+    if (homeLink) {
+        homeLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.hash = '#world';
+        });
+    }
+
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
@@ -37,23 +48,40 @@ export function setupUI() {
 
 // Global UI functions (e.g., charts, general navigation)
 function handleNavigation(hash) {
+    // Default to #world if no hash
     if (!hash) hash = '#world';
 
-    navLinks.forEach(link => {
-        if (link.getAttribute('href') === hash) {
-            link.classList.add('active');
-        } else {
-            link.classList.remove('active');
+    // Remove active class from all nav links and content sections
+    navLinks.forEach(link => link.classList.remove('active'));
+    contentSections.forEach(section => section.classList.remove('active'));
+    
+    // Check for Lore Library deep link
+    if (hash.startsWith('#lore-library:')) {
+        const filePath = hash.substring('#lore-library:'.length);
+        document.querySelector('a[href="#lore-library"]').classList.add('active'); // Activate Lore Library nav link
+        document.getElementById('lore-library').classList.add('active'); // Activate Lore Library section
+        fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNoteTitle, loreNoteContent);
+        
+        // Also highlight the corresponding link in the sidebar's lore list
+        document.querySelectorAll('#lore-notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
+        const correspondingLink = document.querySelector(`#lore-notes-list a[data-filepath-raw="${filePath}"]`);
+        if (correspondingLink) {
+            correspondingLink.classList.add('bg-slate-300', 'font-semibold');
         }
-    });
 
-    contentSections.forEach(section => {
-        if (`#${section.id}` === hash) {
-            section.classList.add('active');
-        } else {
-            section.classList.remove('active');
+    } else {
+        // Handle standard section navigation
+        const targetSectionId = hash.substring(1);
+        const targetNavLink = document.querySelector(`a[href="${hash}"]`);
+        const targetSection = document.getElementById(targetSectionId);
+
+        if (targetNavLink) {
+            targetNavLink.classList.add('active');
         }
-    });
+        if (targetSection) {
+            targetSection.classList.add('active');
+        }
+    }
 }
 
 function setupAttributesChart() {

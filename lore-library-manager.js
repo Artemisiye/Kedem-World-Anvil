@@ -59,8 +59,9 @@ export function setupLoreLibrary(loadingOverlay) {
             folderToggle.innerHTML = `<span class="toggle-icon mr-2">▶</span> ${folderName}`;
             li.appendChild(folderToggle);
 
+            // Add visual indent for sub-folders
             const subList = createList(data.folders[folderName]);
-            subList.classList.add('hidden'); // Start collapsed
+            subList.classList.add('hidden', 'ml-4', 'border-l', 'border-slate-300', 'pl-2'); // Add indent and border
             li.appendChild(subList);
 
             folderToggle.addEventListener('click', () => {
@@ -73,13 +74,17 @@ export function setupLoreLibrary(loadingOverlay) {
         sortedFilePaths.forEach(file => {
             const listItem = document.createElement('li');
             const link = document.createElement('a');
-            link.href = `#`; 
+            link.href = `#lore-library:${file}`; // Update hash for history API
+            // Add a data attribute with the raw file path for easy lookup when navigating via URL hash
+            link.dataset.filepathRaw = file; 
             const displayName = file.split('/').pop().replace('.md', '').replace(/([A-Z])/g, ' $1').trim(); 
             link.textContent = displayName;
             link.className = 'block px-4 py-2 rounded-lg text-slate-700 hover:bg-slate-200 transition-colors duration-200';
             link.addEventListener('click', async (e) => {
                 e.preventDefault();
-                await fetchAndDisplayMarkdown(file, loadingOverlay, loreNoteTitle, loreNoteContent, loreFiles); // Pass loreFiles for wikilink resolution
+                // Update URL hash without page reload
+                history.pushState(null, '', `#lore-library:${file}`);
+                await fetchAndDisplayMarkdown(file, loadingOverlay, loreNoteTitle, loreNoteContent);
                 document.querySelectorAll('#lore-notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
                 link.classList.add('bg-slate-300', 'font-semibold');
             });
@@ -92,10 +97,11 @@ export function setupLoreLibrary(loadingOverlay) {
     loreNotesList.appendChild(createList(organizedFiles));
 }
 
-async function fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNoteTitle, loreNoteContent, allLoreFiles) {
+export async function fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNoteTitle, loreNoteContent) {
     loadingOverlay.classList.remove('hidden');
     const rawGitHubUrl = `https://raw.githubusercontent.com/Artemisiye/Kedem-World-Anvil/main/notes/${filePath}`;
-    
+    const displayName = filePath.split('/').pop().replace('.md', '').replace(/([A-Z])/g, ' $1').trim(); 
+
     try {
         const response = await fetch(rawGitHubUrl);
         if (!response.ok) {
@@ -103,77 +109,76 @@ async function fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNoteTitle, 
         }
         const markdownText = await response.text();
         
-        // Re-configure Marked.js for each render to ensure correct context for wikilinks
-        marked.use({
-            extensions: [{
-                name: 'wikilink',
-                level: 'inline',
-                start(src) { return src.indexOf('[['); },
-                tokenizer(src, tokens) {
-                    const rule = /^\[\[([^|\]]+?)(?:\|([^\]]+?))?\]\]/;
-                    const match = rule.exec(src);
-                    if (match) {
-                        const targetWikiName = match[1];
-                        const linkText = match[2] || targetWikiName.split('/').pop().replace(/([A-Z])/g, ' $1').trim(); // Default display text
-
-                        // Attempt to find the full path in loreFiles
-                        let resolvedFilePath = allLoreFiles.find(f => 
-                            f.toLowerCase() === `${targetWikiName.toLowerCase()}.md` || // Direct match
-                            f.toLowerCase() === `world building/gods/${targetWikiName.toLowerCase()}.md` || // Common sub-folder for gods
-                            f.toLowerCase().endsWith(`/${targetWikiName.toLowerCase()}.md`) // Ends with the name
-                        );
-                        
-                        let href;
-                        if (resolvedFilePath) {
-                            // If found, link to the local handler (for in-app navigation)
-                            // This will be handled by a custom click event on the rendered link
-                            // For now, let's make it a unique class so we can attach an event listener globally
-                            href = `javascript:void(0);`; // Placeholder, actual navigation via JS
-                            return {
-                                type: 'wikilink',
-                                raw: match[0],
-                                page: targetWikiName,
-                                text: linkText,
-                                href: href,
-                                resolvedPath: resolvedFilePath // Store resolved path
-                            };
-                        } else {
-                            // Fallback: Link directly to GitHub if not found internally
-                            href = `https://github.com/Artemisiye/Kedem-World-Anvil/blob/main/notes/${targetWikiName.replace(/ /g, '%20')}.md`;
-                             return {
-                                type: 'wikilink',
-                                raw: match[0],
-                                page: targetWikiName,
-                                text: linkText,
-                                href: href
-                            };
+        // Custom Marked.js renderer for Obsidian-like features
+        const renderer = {
+            paragraph(text) {
+                // Heuristic to detect YAML frontmatter lines or custom properties (tags, aliases, etc.)
+                if (text.startsWith('---') || text.startsWith('aliases:') || text.startsWith('tags:') || text.startsWith('NpcAggresion:') || text.startsWith('NpcTags:') || text.startsWith('Description::') || text.startsWith('BaseValue:') || text.startsWith('## Offerings:') || text.startsWith('## Favors:') || text.startsWith('## Starting Boon:')) {
+                    // Split lines and process them
+                    const lines = text.split('<br>');
+                    let formattedText = '';
+                    lines.forEach(line => {
+                        line = line.trim();
+                        if (line === '---' || line.startsWith('aliases:') || line.startsWith('NpcAggresion:') || line.startsWith('NpcTags:') || line.startsWith('BaseValue:') || line.startsWith('## Offerings:') || line.startsWith('## Favors:') || line.startsWith('## Starting Boon:')) {
+                            // General styling for metadata lines
+                            formattedText += `<p class="text-sm text-slate-500 italic">${line}</p>`;
+                        } else if (line.startsWith('tags:')) {
+                            // Specific styling for 'tags:' line
+                            const tagsContent = line.substring(5).trim();
+                            const tags = tagsContent.split('-').map(t => t.trim()).filter(t => t);
+                            if (tags.length > 0) {
+                                formattedText += `<p class="text-sm text-slate-500 italic">tags: ${tags.map(tag => `<span class="inline-block bg-slate-200 text-slate-700 text-xs font-semibold px-2 py-0.5 rounded-full mr-1">${tag}</span>`).join('')}</p>`;
+                            } else {
+                                formattedText += `<p class="text-sm text-slate-500 italic">${line}</p>`; // Fallback for empty tags
+                            }
+                        } else if (line.startsWith('- ')) {
+                            // List items for tags under 'tags:' block or other lists
+                            formattedText += `<span class="inline-block bg-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-0.5 rounded-full mr-2 mb-1">${line.substring(2).trim()}</span>`;
                         }
-                    }
-                },
-                renderer(token) {
-                    if (token.resolvedPath) {
-                        // For internally resolvable links, add a specific class and data attribute
-                        return `<a href="${token.href}" class="wikilink internal-wikilink" data-filepath="${token.resolvedPath}">${token.text}</a>`;
-                    } else {
-                        // For external links, open in new tab
-                        return `<a href="${token.href}" class="wikilink" target="_blank">${token.text}</a>`;
+                         else {
+                            formattedText += `<p>${line}</p>`; // Default paragraph
+                        }
+                    });
+                    return `<div class="mb-2">${formattedText}</div>`;
+                }
+                // Handle image syntax like ![[Map.png]]
+                if (text.startsWith('![[')) {
+                    const imgFileName = text.match(/!\[\[(.*?)\]\]/);
+                    if (imgFileName && imgFileName[1]) {
+                        // Assume images are in the same folder as the markdown or directly in the notes root if not specified.
+                        // This is a heuristic and might need refinement for complex image paths.
+                        const imgPathBase = `https://raw.githubusercontent.com/Artemisiye/Kedem-World-Anvil/main/notes/`;
+                        let imageSrc = `${imgPathBase}${imgFileName[1]}`;
+                        // If the markdown file is nested, try to resolve the image relative to it.
+                        const fileDir = filePath.substring(0, filePath.lastIndexOf('/') + 1);
+                        if (fileDir !== '' && !imgFileName[1].includes('/')) { // If image is not absolute path and file is nested
+                            imageSrc = `${imgPathBase}${fileDir}${imgFileName[1]}`;
+                        }
+
+                        return `<p><img src="${imageSrc}" alt="${imgFileName[1]}" class="max-w-full h-auto rounded-lg shadow-md mx-auto my-4"></p>`;
                     }
                 }
-            }]
-        });
+                return `<p>${text}</p>`; // Default paragraph rendering
+            }
+        };
+
+        marked.use({ renderer });
         marked.setOptions({ breaks: true }); // Ensure breaks option is always set for this parser instance
 
-        loreNoteTitle.textContent = filePath.split('/').pop().replace('.md', '').replace(/([A-Z])/g, ' $1').trim(); // Clean filename for display
-        loreNoteContent.innerHTML = marked.parse(markdownText); // Parse Markdown to HTML
-
-        // Add event listeners for internal wikilinks *after* rendering
+        loreNoteTitle.textContent = displayName;
+        loreNoteContent.innerHTML = marked.parse(markdownText);
+        
+        // Re-attach event listeners for internal wikilinks after parsing
         loreNoteContent.querySelectorAll('a.internal-wikilink').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const targetFilePath = e.target.dataset.filepath;
                 if (targetFilePath) {
-                    fetchAndDisplayMarkdown(targetFilePath, loadingOverlay, loreNoteTitle, loreNoteContent, allLoreFiles);
-                    // Also update active state in the left panel for the clicked internal link
+                    // Update URL hash and trigger navigation
+                    history.pushState(null, '', `#lore-library:${targetFilePath}`);
+                    // Fetch and display the new note
+                    fetchAndDisplayMarkdown(targetFilePath, loadingOverlay, loreNoteTitle, loreNoteContent, allLoreFiles); // Pass allLoreFiles
+                    // Highlight the corresponding link in the sidebar
                     document.querySelectorAll('#lore-notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
                     const correspondingLink = document.querySelector(`#lore-notes-list a[data-filepath-raw="${targetFilePath}"]`);
                     if (correspondingLink) {
@@ -185,7 +190,7 @@ async function fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNoteTitle, 
         
     } catch (error) {
         console.error('Error fetching Markdown file:', error);
-        loreNoteTitle.textContent = `Error loading ${filePath.split('/').pop().replace('.md', '')}`;
+        loreNoteTitle.textContent = `Error loading ${displayName}`;
         loreNoteContent.innerHTML = `<p class="text-red-600">Could not load note. Please ensure the file path is correct and the file is publicly accessible.</p><p>Error: ${error.message}</p>`;
     } finally {
         loadingOverlay.classList.add('hidden');

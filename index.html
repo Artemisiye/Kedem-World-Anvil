@@ -174,6 +174,34 @@
         .markdown-content a.wikilink:hover {
             text-decoration: underline;
         }
+        /* Specific styling for tags/metadata lines within markdown-content */
+        .markdown-content .metadata-line {
+            font-size: 0.875rem; /* text-sm */
+            color: #64748b; /* slate-500 */
+            font-style: italic;
+            margin-bottom: 0.25rem;
+            line-height: 1.2;
+        }
+        .markdown-content .tag-chip {
+            display: inline-block;
+            background-color: #e2e8f0; /* slate-200 */
+            color: #334155; /* slate-800 */
+            font-size: 0.75rem; /* text-xs */
+            font-weight: 500; /* font-medium */
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px; /* rounded-full */
+            margin-right: 0.4rem;
+            margin-bottom: 0.4rem;
+            white-space: nowrap;
+        }
+        .markdown-content .property-line {
+            font-size: 0.875rem; /* text-sm */
+            margin-bottom: 0.25rem;
+        }
+        .markdown-content .property-line strong {
+            font-weight: 600;
+            color: #1e293b; /* slate-800 */
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -187,8 +215,7 @@
         <!-- Sidebar Navigation -->
         <aside class="w-64 bg-slate-800 text-slate-100 flex flex-col fixed h-full">
             <div class="h-16 flex items-center justify-center border-b border-slate-700">
-                <h1 class="text-2xl font-bold text-amber-400">Kedem</h1>
-                <h2 class="text-lg font-light text-slate-300 ml-2">Anvil</h2>
+                <a href="#world" id="home-link" class="text-2xl font-bold text-amber-400 hover:text-amber-300 transition-colors duration-200">Kedem Anvil</a>
             </div>
             <nav class="flex-1 px-4 py-4 space-y-2">
                 <a href="#world" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">The World</a>
@@ -215,7 +242,7 @@
                     </div>
 
                     <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="text-2xl font-bold text-teal-700 mb-4">The Nature of Humans</h3>
+                        <h3 class="2xl font-bold text-teal-700 mb-4">The Nature of Humans</h3>
                         <p class="text-base leading-relaxed mb-4">Humans, the player characters, are a unique and unnatural presence in Kedem. Created by the Titan Prometheus, they were fashioned with a 60% godlike and 40% ape essence, a direct violation of the established 40/60 ratio for other humanoids. This forbidden act granted humans partial immortality (the in-game respawn mechanic), stronger souls, and a profound degree of free will.</p>
                         <p class="text-base leading-relaxed">Because they do not truly die, their souls are not reabsorbed into the life cycle of Gaia, the Earth primordial. This fundamental break from the natural order makes their existence both a potential blessing for the world and a grave danger to its cosmic balance.</p>
                     </div>
@@ -257,7 +284,7 @@
                 </div>
                 <div class="space-y-8">
                     <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="text-2xl font-bold text-teal-700 mb-4">Engineered Humanoids</h3>
+                        <h3 class="2xl font-bold text-teal-700 mb-4">Engineered Humanoids</h3>
                         <div class="grid md:grid-cols-2 gap-8">
                             <div>
                                 <h4 class="text-xl font-semibold mb-2">Goblins</h4>
@@ -284,7 +311,7 @@
                 </div>
                 <div class="space-y-8">
                     <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="text-2xl font-bold text-teal-700 mb-4">Player Progression: A Hero's Journey</h3>
+                        <h3 class="2xl font-bold text-teal-700 mb-4">Player Progression: A Hero's Journey</h3>
                         <div class="relative pl-8">
                             <!-- Timeline Line -->
                             <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-300"></div>
@@ -310,7 +337,7 @@
                     </div>
 
                     <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="text-2xl font-bold text-teal-700 mb-4">Player Attributes</h3>
+                        <h3 class="2xl font-bold text-teal-700 mb-4">Player Attributes</h3>
                         <div class="chart-container">
                             <canvas id="attributesChart"></canvas>
                         </div>
@@ -427,27 +454,52 @@
               if (match) {
                 // Determine the base path for the wikilink target
                 // This assumes all wikilinks point to files directly within /notes/ or a subfolder of /notes/
-                let targetFileName = match[1]; 
-                
-                // Construct the correct raw GitHub URL, accounting for spaces and potential nested paths
-                // This assumes the root of notes is `https://github.com/Artemisiye/Kedem-World-Anvil/blob/main/notes/`
+                let targetWikiName = match[1].trim(); // Get the raw name
                 const githubBasePath = `https://github.com/Artemisiye/Kedem-World-Anvil/blob/main/notes/`;
-                let wikilinkHref = `${githubBasePath}${targetFileName.replace(/ /g, '%20')}.md`;
                 
-                // If the link text is different from the page name, use it. Otherwise, clean the page name for display.
-                const linkText = match[2] || targetFileName.split('/').pop().replace(/([A-Z])/g, ' $1').trim();
-
-                return {
-                  type: 'wikilink',
-                  raw: match[0],
-                  page: match[1],
-                  text: linkText, 
-                  href: wikilinkHref
-                };
+                // Try to find a direct match or a match ending with the target name
+                const resolvedFilePath = window.loreFiles.find(f => 
+                    f.toLowerCase() === `${targetWikiName.toLowerCase()}.md` || // Direct match at root of notes
+                    f.toLowerCase().endsWith(`/${targetWikiName.toLowerCase()}.md`) // Ends with the target name (for nested files)
+                );
+                
+                let href;
+                if (resolvedFilePath) {
+                    // If found, construct the internal SPA link (will be handled by history.pushState in JS)
+                    href = `#/lore-library:${resolvedFilePath}`; 
+                    return {
+                        type: 'wikilink',
+                        raw: match[0],
+                        page: targetWikiName,
+                        text: match[2] || targetWikiName.split('/').pop().replace(/([A-Z])/g, ' $1').trim(), // Display text
+                        href: href,
+                        isInternal: true, // Custom property to signify internal link
+                        resolvedPath: resolvedFilePath // Store the exact path for later use
+                    };
+                } else {
+                    // Fallback: Link directly to GitHub if not found internally
+                    // Clean filename for URL, accounting for spaces
+                    const fallbackPath = targetWikiName.replace(/ /g, '%20');
+                    href = `${githubBasePath}${fallbackPath}.md`;
+                     return {
+                        type: 'wikilink',
+                        raw: match[0],
+                        page: targetWikiName,
+                        text: match[2] || targetWikiName.split('/').pop().replace(/([A-Z])/g, ' $1').trim(), // Display text
+                        href: href,
+                        isInternal: false // Not an internal SPA link
+                    };
+                }
               }
             },
             renderer(token) {
-              return `<a href="${token.href}" class="wikilink" target="_blank">${token.text}</a>`;
+                if (token.isInternal) {
+                    // For internal links, add data-filepath attribute for click handler
+                    return `<a href="${token.href}" class="wikilink internal-wikilink" data-filepath="${token.resolvedPath}">${token.text}</a>`;
+                } else {
+                    // For external links, open in new tab
+                    return `<a href="${token.href}" class="wikilink" target="_blank">${token.text}</a>`;
+                }
             }
           }]
         });

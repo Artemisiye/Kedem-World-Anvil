@@ -159,8 +159,7 @@ export const loreFiles = [
     'Magic/Spells/Life Toll.md',
     'Magic/Spells/Mana Blast.md',
     
-    // Melee Combat (assuming Melee Combat.md exists in the notes root or is a folder)
-    // If it's a folder, you'd list files like 'Melee Combat/SomeTechnique.md'
+    // Melee Combat (placeholder, assuming it's a file)
     'Melee Combat.md', 
 
     // Player Mechanics
@@ -230,7 +229,6 @@ export const loreFiles = [
     'World Building/Gods/Devils/Azazel.md',
     'World Building/Gods/Devils/Ben Shahar.md',
     'World Building/Gods/Devils/Samael.md',
-    // 'World Building/Gods/God Portraits' (contains images/canvases, not markdown)
     // World Building/Gods/Great Old Ones
     'World Building/Gods/Great Old Ones/Cthulhu.md',
     'World Building/Gods/Great Old Ones/Nyarlathotep.md',
