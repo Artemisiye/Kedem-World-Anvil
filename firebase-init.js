@@ -1,6 +1,6 @@
 // firebase-init.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"; // Removed signInAnonymously
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // Your actual Firebase project configuration
@@ -20,8 +20,8 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 
 export let currentUserId = null;
-export let isEditor = false; // New variable to track editor status
-export let allowedEditorUids = []; // To store the list fetched from Firestore
+export let isEditor = false; 
+export let allowedEditorUids = []; 
 
 // Function to fetch allowed editor UIDs from Firestore
 async function fetchAllowedEditorUids() {
@@ -33,7 +33,7 @@ async function fetchAllowedEditorUids() {
             allowedEditorUids = data.allowedUids || [];
             console.log("Allowed editor UIDs fetched:", allowedEditorUids);
         } else {
-            console.warn("Editor settings document not found in Firestore. No UIDs whitelisted.");
+            console.warn("Editor settings document (app_config/editor_settings) not found in Firestore. No UIDs whitelisted for editing.");
             allowedEditorUids = [];
         }
     } catch (error) {
@@ -44,22 +44,20 @@ async function fetchAllowedEditorUids() {
 
 // Authenticate and set up auth state listener
 onAuthStateChanged(auth, async (user) => {
-    // Fetch allowed editor UIDs every time auth state changes, or once on init
-    // This needs to happen before setting isEditor
+    // Fetch allowed editor UIDs every time auth state changes to keep it updated
     await fetchAllowedEditorUids(); 
 
     if (user) {
         currentUserId = user.uid;
+        // Check if the current user's UID is in the fetched allowedEditorUids list
         isEditor = allowedEditorUids.includes(currentUserId);
-        console.log(`User ${user.email} (${currentUserId}) logged in. Is editor: ${isEditor}`);
+        console.log(`User ${user.email || user.uid} logged in. Is editor: ${isEditor}`);
     } else {
         currentUserId = null;
-        isEditor = false;
+        isEditor = false; // Not logged in, so not an editor
         console.log("User logged out or not authenticated.");
-        // If you strictly want non-anonymous access, you might redirect to a login page here
-        // For now, app will just show restricted content.
     }
-    // Dispatch a custom event once auth and editor status is ready
+    // Dispatch a custom event once auth and editor status is ready, for other modules to react
     document.dispatchEvent(new CustomEvent('authReady', { 
         detail: { 
             userId: currentUserId, 
@@ -70,22 +68,38 @@ onAuthStateChanged(auth, async (user) => {
     }));
 });
 
-// Export sign-in/sign-out functions for UI
+// Export sign-in/sign-out functions for UI to use
 export async function signInUser(email, password) {
     try {
         await signInWithEmailAndPassword(auth, email, password);
-        console.log("Signed in successfully!");
         return { success: true };
     } catch (error) {
-        console.error("Error signing in:", error.message);
-        return { success: false, error: error.message };
+        console.error("Error signing in:", error.code, error.message);
+        let errorMessage = "An unknown error occurred.";
+        switch (error.code) {
+            case "auth/invalid-email":
+                errorMessage = "Invalid email format.";
+                break;
+            case "auth/user-disabled":
+                errorMessage = "This account has been disabled.";
+                break;
+            case "auth/user-not-found":
+            case "auth/wrong-password":
+                errorMessage = "Invalid email or password.";
+                break;
+            case "auth/invalid-credential": // For newer Firebase versions with passwordless/identity
+                errorMessage = "Invalid email or password.";
+                break;
+            default:
+                errorMessage = error.message;
+        }
+        return { success: false, error: errorMessage };
     }
 }
 
 export async function signOutUser() {
     try {
         await signOut(auth);
-        console.log("Signed out successfully!");
         return { success: true };
     } catch (error) {
         console.error("Error signing out:", error.message);

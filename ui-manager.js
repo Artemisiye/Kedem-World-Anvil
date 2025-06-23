@@ -1,16 +1,17 @@
 // ui-manager.js
-import { db, currentUserId, auth, signInUser, signOutUser } from './firebase-init.js'; // Import Firebase instances, userId, and new auth functions
+import { db, currentUserId, auth, signInUser, signOutUser } from './firebase-init.js'; 
 import { initializeDeityManager } from './deity-manager.js'; 
-import { setupLoreLibrary } from './lore-library-manager.js'; 
+import { setupLoreLibrary, fetchAndDisplayMarkdown } from './lore-library-manager.js'; 
+import { loreFiles } from './data-constants.js'; // Import loreFiles for handleNavigation
 
-// Declare UI elements globally within the module scope
+// Declare UI elements globally within the module scope for accessibility
 const navLinks = document.querySelectorAll('.nav-link');
 const contentSections = document.querySelectorAll('.content-section');
-const userIdDisplay = document.getElementById('user-id-display');
+const userIdDisplay = document.getElementById('user-id-display'); // Sidebar user ID
 const loadingOverlay = document.getElementById('loading-overlay');
 const loreNoteTitle = document.getElementById('lore-note-title');
 const loreNoteContent = document.getElementById('lore-note-content');
-const loreNotesList = document.getElementById('lore-notes-list'); // Needed for highlighting in deep links
+const loreNotesList = document.getElementById('lore-notes-list'); // Used for highlighting in lore library
 
 // New UI elements for login/logout
 const authControlsContainer = document.createElement('div');
@@ -24,7 +25,7 @@ authControlsContainer.innerHTML = `
         <input type="email" id="login-email" placeholder="Email" class="w-full p-2 rounded-md bg-slate-700 text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400">
         <input type="password" id="login-password" placeholder="Password" class="w-full p-2 rounded-md bg-slate-700 text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400">
         <button id="login-button" class="w-full bg-amber-600 text-white py-2 rounded-md hover:bg-amber-700 transition-colors duration-200 text-sm font-semibold">Login</button>
-        <p id="auth-error-message" class="text-red-300 text-xs mt-1 hidden">Error: </p>
+        <p id="auth-error-message" class="text-red-300 text-xs mt-1 hidden"></p>
     </div>
     <button id="logout-button" class="w-full bg-slate-600 text-white py-2 rounded-md hover:bg-slate-700 transition-colors duration-200 text-sm font-semibold hidden">Logout</button>
 `;
@@ -36,37 +37,41 @@ const loginButton = document.getElementById('login-button');
 const logoutButton = document.getElementById('logout-button');
 const authStatusText = document.getElementById('auth-status-text');
 const authErrorMessage = document.getElementById('auth-error-message');
-const userIdDisplayMain = document.getElementById('user-id-display-main'); // Reference the new display element
-
+const userIdDisplayMain = document.getElementById('user-id-display-main'); 
 
 export function setupUI() {
-    // Update User ID and authentication status display once authenticated
+    // Listen for authReady event to update UI and initialize managers
     document.addEventListener('authReady', (event) => {
-        userIdDisplayMain.textContent = event.detail.userId || 'N/A';
-        if (event.detail.userId) {
-            authStatusText.textContent = event.detail.isEditor ? 'Editor (Logged In)' : 'Logged In';
+        const { userId, db, auth, isEditor } = event.detail;
+
+        userIdDisplayMain.textContent = userId || 'Not available';
+        if (userId) {
+            authStatusText.textContent = isEditor ? 'Editor (Logged In)' : 'Logged In (Viewer)';
             document.getElementById('login-form').classList.add('hidden');
             logoutButton.classList.remove('hidden');
         } else {
-            authStatusText.textContent = 'Not logged in';
-            document.getElementById('login-form').classList.remove('hidden');
+            authStatusText.textContent = 'Not logged in (Viewer)'; // Non-authenticated users can still view
+            document.getElementById('login-form').classList.remove('hidden'); // Ensure form is visible for login
             logoutButton.classList.add('hidden');
         }
-        // Initialize deity manager once Firebase is ready and we have editor status
-        initializeDeityManager(event.detail.db, event.detail.userId, event.detail.isEditor);
+        
+        // Initialize deity manager with Firestore instance and editor status
+        initializeDeityManager(db, userId, isEditor);
     });
 
     // Handle login/logout clicks
     loginButton.addEventListener('click', async () => {
         const email = loginEmailInput.value;
         const password = loginPasswordInput.value;
-        authErrorMessage.classList.add('hidden'); // Hide previous errors
+        authErrorMessage.classList.add('hidden'); 
         if (email && password) {
+            loadingOverlay.classList.remove('hidden');
             const result = await signInUser(email, password);
             if (!result.success) {
                 authErrorMessage.textContent = `Error: ${result.error}`;
                 authErrorMessage.classList.remove('hidden');
             }
+            loadingOverlay.classList.add('hidden');
         } else {
             authErrorMessage.textContent = "Please enter email and password.";
             authErrorMessage.classList.remove('hidden');
@@ -74,14 +79,20 @@ export function setupUI() {
     });
 
     logoutButton.addEventListener('click', async () => {
+        loadingOverlay.classList.remove('hidden');
         const result = await signOutUser();
         if (!result.success) {
             authErrorMessage.textContent = `Error logging out: ${result.error}`;
             authErrorMessage.classList.remove('hidden');
+        } else {
+            // Clear inputs on successful logout
+            loginEmailInput.value = '';
+            loginPasswordInput.value = '';
         }
+        loadingOverlay.classList.add('hidden');
     });
 
-    // Handle navigation
+    // Home link already has an ID in index.html now
     const homeLink = document.getElementById('home-link'); 
     if (homeLink) {
         homeLink.addEventListener('click', (e) => {
@@ -98,48 +109,33 @@ export function setupUI() {
     });
     
     window.addEventListener('hashchange', () => handleNavigation(window.location.hash));
-    handleNavigation(window.location.hash); // Initial load based on hash
+    handleNavigation(window.location.hash); 
 
-    // Setup chart (assuming it's in the Gameplay section)
     setupAttributesChart();
-
-    // Setup Lore Library
     setupLoreLibrary(loadingOverlay); 
 }
 
 // Global UI functions (e.g., charts, general navigation)
 function handleNavigation(hash) {
-    // Default to #world if no hash
     if (!hash) hash = '#world';
 
-    // Remove active class from all nav links and content sections
     navLinks.forEach(link => link.classList.remove('active'));
     contentSections.forEach(section => section.classList.remove('active'));
     
-    // Check for Lore Library deep link
     if (hash.startsWith('#lore-library:')) {
         const filePath = hash.substring('#lore-library:'.length);
-        document.querySelector('a[href="#lore-library"]').classList.add('active'); // Activate Lore Library nav link
-        document.getElementById('lore-library').classList.add('active'); // Activate Lore Library section
-        // Need to pass loreFiles to fetchAndDisplayMarkdown for wikilink resolution
-        // This is a bit tricky with module imports, but we can make loreFiles global or pass it down.
-        // For now, let's keep it simple and assume loreFiles is accessible via its import in lore-library-manager.js
-        // The fetchAndDisplayMarkdown function itself doesn't directly rely on the loreFiles *array* for its core logic once imported.
-        // It uses it for wikilink resolution, which is handled in the marked.use extension.
-        setupLoreLibrary(loadingOverlay); // Re-render the folder structure
-        fetchAndDisplayMarkdown(filePath, loadingOverlay, document.getElementById('lore-note-title'), document.getElementById('lore-note-content')); // Assuming these are globally accessible DOM elements
+        document.querySelector('a[href="#lore-library"]').classList.add('active'); 
+        document.getElementById('lore-library').classList.add('active'); 
+        // Need to pass loreFiles imported from data-constants.js to fetchAndDisplayMarkdown for wikilink resolution
+        fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNoteTitle, loreNoteContent, loreFiles); // Pass loreFiles here
         
-        // Also highlight the corresponding link in the sidebar's lore list
         document.querySelectorAll('#lore-notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
-        // Find the link by its data-filepath-raw attribute
         const correspondingLink = document.querySelector(`#lore-notes-list a[data-filepath-raw="${filePath}"]`);
         if (correspondingLink) {
             correspondingLink.classList.add('bg-slate-300', 'font-semibold');
-            // Optional: Expand parent folders if necessary (more complex UI logic)
         }
 
     } else {
-        // Handle standard section navigation
         const targetSectionId = hash.substring(1);
         const targetNavLink = document.querySelector(`a[href="${hash}"]`);
         const targetSection = document.getElementById(targetSectionId);
