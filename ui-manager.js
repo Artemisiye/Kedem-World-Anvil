@@ -3,12 +3,13 @@ import { db, currentUserId, auth } from './firebase-init.js'; // Import Firebase
 import { initializeDeityManager } from './deity-manager.js'; // Import deity manager
 import { setupLoreLibrary } from './lore-library-manager.js'; // Import lore library manager
 
-export function setupUI() {
-    const navLinks = document.querySelectorAll('.nav-link');
-    const contentSections = document.querySelectorAll('.content-section');
-    const userIdDisplay = document.getElementById('user-id-display');
-    const loadingOverlay = document.getElementById('loading-overlay');
+// Declare UI elements globally within the module scope
+const navLinks = document.querySelectorAll('.nav-link');
+const contentSections = document.querySelectorAll('.content-section');
+const userIdDisplay = document.getElementById('user-id-display');
+const loadingOverlay = document.getElementById('loading-overlay');
 
+export function setupUI() {
     // Update User ID display once authenticated
     document.addEventListener('authReady', (event) => {
         userIdDisplay.textContent = event.detail.userId;
