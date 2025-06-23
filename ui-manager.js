@@ -1,17 +1,17 @@
 // ui-manager.js
 import { db, currentUserId, auth, signInUser, signOutUser } from './firebase-init.js'; 
 import { initializeDeityManager } from './deity-manager.js'; 
-import { setupLoreLibrary, fetchAndDisplayMarkdown } from './lore-library-manager.js'; 
-import { loreFiles } from './data-constants.js'; 
+import { setupNoteLibrary, fetchAndDisplayMarkdown } from './note-library-manager.js'; 
+import { noteFiles } from './data-constants.js'; 
 
 // Declare UI elements globally within the module scope for accessibility
 const navLinks = document.querySelectorAll('.nav-link');
 const contentSections = document.querySelectorAll('.content-section');
 const userIdDisplay = document.getElementById('user-id-display'); 
 const loadingOverlay = document.getElementById('loading-overlay');
-const loreNoteTitle = document.getElementById('lore-note-title');
-const loreNoteContent = document.getElementById('lore-note-content');
-const loreNotesList = document.getElementById('lore-notes-list'); 
+const noteTitle = document.getElementById('note-title');
+const noteContent = document.getElementById('note-content');
+const notesList = document.getElementById('notes-list'); 
 
 // New UI elements for login/logout (created once and appended)
 const authControlsContainer = document.createElement('div');
@@ -106,14 +106,14 @@ export function setupUI() {
         });
     });
     
-    // Pass loreFiles to handleNavigation via the global window object.
+    // Pass noteFiles to handleNavigation via the global window object.
     // The handleNavigation function will then call fetchAndDisplayMarkdown,
-    // which also relies on window.loreFiles (from markdown-parser.js and data-constants.js).
+    // which also relies on window.noteFiles (from markdown-parser.js and data-constants.js).
     window.addEventListener('hashchange', () => handleNavigation(window.location.hash));
     handleNavigation(window.location.hash); 
 
     setupAttributesChart();
-    setupLoreLibrary(loadingOverlay); 
+    setupNoteLibrary(loadingOverlay); 
 }
 
 function handleNavigation(hash) {
@@ -121,22 +121,27 @@ function handleNavigation(hash) {
 
     navLinks.forEach(link => link.classList.remove('active'));
     contentSections.forEach(section => section.classList.remove('active'));
-    
-    // Updated to use the new section name
-    if (hash.startsWith('#notes-library:')) {
-        const filePath = hash.substring('#notes-library:'.length);
-        document.querySelector('a[href="#notes-library"]').classList.add('active'); // Activate Notes Library nav link
-        document.getElementById('lore-library').classList.add('active'); // Activate Lore Library section (by ID)
-        
-        // Pass loreNoteTitle, loreNoteContent, and loadingOverlay
-        fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNoteTitle, loreNoteContent);
-        
-        document.querySelectorAll('#lore-notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
-        const correspondingLink = document.querySelector(`#lore-notes-list a[data-filepath-raw="${filePath}"]`);
-        if (correspondingLink) {
-            correspondingLink.classList.add('bg-slate-300', 'font-semibold');
+
+    if (hash.startsWith('#note-library')) { // Check for base #note-library as well
+        const filePath = hash.substring('#note-library:'.length);
+        document.querySelector('a[href="#note-library"]').classList.add('active');
+        document.getElementById('note-library').classList.add('active'); // Still uses 'note-library' ID for the section
+
+        let fileToDisplay = filePath;
+        if (filePath === '' || filePath === 'note-library') { // If just #note-library or empty path
+            // Set a default note to display if none is specified
+            fileToDisplay = window.noteFiles[0]; // Display the first note by default
         }
 
+        if (fileToDisplay) { // Ensure a fileToDisplay exists before attempting to fetch
+            fetchAndDisplayMarkdown(fileToDisplay, loadingOverlay, noteTitle, noteContent);
+
+            document.querySelectorAll('#notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
+            const correspondingLink = document.querySelector(`#notes-list a[data-filepath-raw="${fileToDisplay}"]`);
+            if (correspondingLink) {
+                correspondingLink.classList.add('bg-slate-300', 'font-semibold');
+            }
+        }
     } else {
         const targetSectionId = hash.substring(1);
         const targetNavLink = document.querySelector(`a[href="${hash}"]`);

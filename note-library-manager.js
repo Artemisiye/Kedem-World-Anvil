@@ -1,13 +1,13 @@
-// lore-library-manager.js
+// note-library-manager.js
 
-import { loreFiles } from './data-constants.js'; // Import loreFiles from constants
+import { noteFiles } from './data-constants.js'; // Import noteFiles from constants
 import { markedInstance } from './markdown-parser.js'; // Import the configured marked instance
 
-export function setupLoreLibrary(loadingOverlay) {
-    const loreNotesList = document.getElementById('lore-notes-list');
-    const loreNoteTitle = document.getElementById('lore-note-title');
-    const loreNoteContent = document.getElementById('lore-note-content');
-    loreNotesList.innerHTML = ''; 
+export function setupNoteLibrary(loadingOverlay) {
+    const notesList = document.getElementById('notes-list');
+    const noteTitle = document.getElementById('note-title');
+    const noteContent = document.getElementById('note-content');
+    notesList.innerHTML = ''; 
 
     // Function to build the folder structure recursively
     function buildFolderStructure(files) {
@@ -35,7 +35,7 @@ export function setupLoreLibrary(loadingOverlay) {
         return structure;
     }
 
-    const organizedFiles = buildFolderStructure(loreFiles);
+    const organizedFiles = buildFolderStructure(noteFiles);
 
     function createList(data) {
         const ul = document.createElement('ul');
@@ -83,9 +83,9 @@ export function setupLoreLibrary(loadingOverlay) {
                 e.preventDefault();
                 // Update URL hash without page reload
                 history.pushState(null, '', `#notes-library:${file}`); // Use new section name in hash
-                // Pass loreNoteTitle, loreNoteContent to the fetch function directly
-                await fetchAndDisplayMarkdown(file, loadingOverlay, loreNoteTitle, loreNoteContent);
-                document.querySelectorAll('#lore-notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
+                // Pass noteTitle, noteContent to the fetch function directly
+                await fetchAndDisplayMarkdown(file, loadingOverlay, noteTitle, noteContent);
+                document.querySelectorAll('#notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
                 link.classList.add('bg-slate-300', 'font-semibold');
             });
             listItem.appendChild(link);
@@ -94,10 +94,10 @@ export function setupLoreLibrary(loadingOverlay) {
         return ul;
     }
 
-    loreNotesList.appendChild(createList(organizedFiles));
+    notesList.appendChild(createList(organizedFiles));
 }
 
-export async function fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNoteTitle, loreNoteContent) {
+export async function fetchAndDisplayMarkdown(filePath, loadingOverlay, noteTitle, noteContent) {
     loadingOverlay.classList.remove('hidden');
     const rawGitHubUrl = `https://raw.githubusercontent.com/Artemisiye/Kedem-World-Anvil/main/notes/${filePath}`;
     const displayName = filePath.split('/').pop().replace('.md', '').replace(/([A-Z])/g, ' $1').trim(); 
@@ -110,7 +110,7 @@ export async function fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNote
         let markdownText = await response.text();
         
         // Set data-rawfilepath on the title element for image path resolution in marked.js renderer
-        loreNoteTitle.dataset.rawfilepath = filePath;
+        noteTitle.dataset.rawfilepath = filePath;
 
         // --- PRE-PROCESSING FOR OBSIDIAN METADATA AND CUSTOM PROPERTIES ---
         const processedLines = [];
@@ -172,21 +172,21 @@ export async function fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNote
         markdownText = processedLines.join('\n'); // Rejoin processed lines
 
 
-        loreNoteTitle.textContent = displayName;
-        loreNoteContent.innerHTML = markedInstance.parse(markdownText); // Use the globally configured marked instance
+        noteTitle.textContent = displayName;
+        noteContent.innerHTML = markedInstance.parse(markdownText); // Use the globally configured marked instance
         
         // Re-attach event listeners for internal wikilinks *after* rendering
-        loreNoteContent.querySelectorAll('a.internal-wikilink').forEach(link => {
+        noteContent.querySelectorAll('a.internal-wikilink').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const targetFilePath = e.target.dataset.filepath;
                 if (targetFilePath) {
                     history.pushState(null, '', targetFilePath); 
-                    // Pass current HTML elements for Lore Library to avoid re-querying
-                    fetchAndDisplayMarkdown(targetFilePath.substring('#notes-library:'.length), loadingOverlay, loreNoteTitle, loreNoteContent);
+                    // Pass current HTML elements for Note Library to avoid re-querying
+                    fetchAndDisplayMarkdown(targetFilePath.substring('#notes-library:'.length), loadingOverlay, noteTitle, noteContent);
                     
-                    document.querySelectorAll('#lore-notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
-                    const correspondingLink = document.querySelector(`#lore-notes-list a[data-filepath-raw="${targetFilePath.substring('#notes-library:'.length)}"]`);
+                    document.querySelectorAll('#notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
+                    const correspondingLink = document.querySelector(`#notes-list a[data-filepath-raw="${targetFilePath.substring('#notes-library:'.length)}"]`);
                     if (correspondingLink) {
                         correspondingLink.classList.add('bg-slate-300', 'font-semibold');
                     }
@@ -196,8 +196,8 @@ export async function fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNote
         
     } catch (error) {
         console.error('Error fetching Markdown file:', error);
-        loreNoteTitle.textContent = `Error loading ${displayName}`;
-        loreNoteContent.innerHTML = `<p class="text-red-600">Could not load note. Please ensure the file path is correct and the file is publicly accessible.</p><p>Error: ${error.message}</p>`;
+        noteTitle.textContent = `Error loading ${displayName}`;
+        noteContent.innerHTML = `<p class="text-red-600">Could not load note. Please ensure the file path is correct and the file is publicly accessible.</p><p>Error: ${error.message}</p>`;
     } finally {
         loadingOverlay.classList.add('hidden');
     }

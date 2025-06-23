@@ -43,10 +43,10 @@ export const initialDeityDataFallback = [
     { name: 'Samael', aliases: 'Satan, The Creeping Death', tags: ['God/Devil'], description: 'An enigmatic god, perhaps the primordial Death Itself. Associated with temptation and destruction.', domain: 'Death, Temptation, Destruction' },
 ];
 
-// All lore files from the 'notes' directory in the GitHub repository
+// All note files from the 'notes' directory in the GitHub repository
 // IMPORTANT: Keep this list updated manually to include new notes you want displayed.
 // Paths are relative to the /notes/ directory in your GitHub repo.
-export const loreFiles = [
+export const noteFiles = [
     // Gameplay
     'Gameplay/Ascending to Godhood.md',
     'Gameplay/Early Game.md',
