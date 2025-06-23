@@ -28,27 +28,7 @@
             color: #1e293b; /* slate-800 */
             font-weight: 600;
         }
-        .content-section {
-            display: none; /* Sections are managed by JS in SPA, but here, only 'note-library' will be active */
-        }
-        .content-section.active {
-            display: block;
-        }
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(255, 255, 255, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            font-size: 1.5rem;
-            color: #1e293b;
-        }
-        /* Style for rendered markdown content */
+        /* Styles for markdown content, more extensive on this page */
         .markdown-content h1 { font-size: 2.25rem; font-weight: 700; margin-bottom: 1rem; }
         .markdown-content h2 { font-size: 1.875rem; font-weight: 600; margin-bottom: 0.75rem; }
         .markdown-content h3 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
@@ -103,6 +83,20 @@
             font-weight: 600;
             color: #1e293b; /* slate-800 */
         }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            font-size: 1.5rem;
+            color: #1e293b;
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -125,6 +119,13 @@
                 <a href="explorer.html#gameplay" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Gameplay & Mechanics</a>
                 <a href="note-library.html" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700 active">Note Library</a>
             </nav>
+            <!-- Note-specific sidebar content below main navigation -->
+            <div class="flex-1 p-4 overflow-y-auto border-t border-slate-700">
+                <h3 class="text-xl font-bold text-teal-300 mb-3">Notes</h3>
+                <ul id="note-list" class="space-y-2">
+                    <!-- Note list will be injected here by JavaScript -->
+                </ul>
+            </div>
             <!-- Auth controls are now dynamically added by ui-manager.js, removing static User ID display -->
         </aside>
 
@@ -135,42 +136,22 @@
                 <!-- Breadcrumbs will be dynamically inserted here by JavaScript -->
             </nav>
 
-            <!-- Note Library Section (now the main content for this page) -->
-            <section id="note-library" class="content-section active"> <!-- Marked as active by default for this page -->
-                <h2 class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">Note Library</h2>
-                <div class="bg-white p-6 rounded-xl shadow-sm mb-6">
-                    <p class="text-base leading-relaxed">This section allows you to explore various Markdown notes directly from the Kedem-World-Anvil repository. Select a note from the list to view its raw content rendered here. Note that adding new files to this list requires manual updates to the application code.</p>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="md:col-span-1 bg-white p-4 rounded-xl shadow-sm overflow-y-auto max-h-[60vh]">
-                        <h3 class="text-xl font-bold text-teal-700 mb-3">Available Notes</h3>
-                        <ul id="note-list" class="space-y-2">
-                            <!-- List of notes will be injected here -->
-                        </ul>
-                    </div>
-                    <div class="md:col-span-2 bg-white p-6 rounded-xl shadow-sm overflow-y-auto max-h-[60vh]">
-                        <h3 class="text-xl font-bold text-teal-700 mb-3" id="note-title">Select a Note</h3>
-                        <div id="note-content" class="markdown-content text-base text-slate-700 leading-relaxed">
-                            <p>Click on a note from the left panel to display its content.</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
+            <!-- Note Display Area (now the main content for this page) -->
+            <h2 id="note-display-title" class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">Note Library</h2>
+            <div id="note-content" class="markdown-content bg-white p-6 rounded-xl shadow-sm text-base text-slate-700 leading-relaxed">
+                <p>Select a note from the left panel to display its content.</p>
+            </div>
 
         </main>
     </div>
 
-    <!-- No Deity Detail Modal on this page, as it's specific to the Pantheon Explorer -->
-    
     <!-- Firebase and other core modules loaded at the end of the body for DOM readiness -->
     <script type="module">
-        // Export initialDeityDataFallback (might not be needed on this page, but kept for consistency if other modules rely on it)
-        // and noteFiles from data-constants.js to the global window object.
-        // This is necessary because the marked.js extensions (configured in markdown-parser.js, which is a regular script),
-        // need global access to noteFiles for wikilink resolution.
-        import { initialDeityDataFallback, noteFiles } from './data-constants.js'; 
-        window.initialDeityDataFallback = initialDeityDataFallback;
+        // Export noteFiles to the global window object for marked.js
+        import { noteFiles } from './data-constants.js'; 
         window.noteFiles = noteFiles; 
+        // No initialDeityDataFallback needed on this page unless other modules strictly require it globally
+        // window.initialDeityDataFallback = initialDeityDataFallback; 
     </script>
     <script type="module" src="./firebase-init.js"></script>
     <script type="module" src="./markdown-parser.js"></script>
