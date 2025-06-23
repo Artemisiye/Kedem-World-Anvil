@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light"> <!-- Added data-theme attribute here -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,10 +14,57 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
+        /* CSS Variables for theming */
+        :root[data-theme='light'] {
+            --bg-color: #f8fafc; /* slate-50 */
+            --text-color: #334155; /* slate-700 */
+            --sidebar-bg: #1e293b; /* slate-800 */
+            --sidebar-text: #f1f5f9; /* slate-100 */
+            --sidebar-border: #475569; /* slate-700 */
+            --nav-hover-bg: #334155; /* slate-700 */
+            --nav-active-bg: #fbbf24; /* amber-400 */
+            --nav-active-text: #1e293b; /* slate-800 */
+            --note-bg: #ffffff; /* white */
+            --note-border: #e2e8f0; /* slate-200 */
+            --properties-bg: #f1f5f9; /* slate-100 */
+            --properties-border: #e2e8f0; /* slate-200 */
+            --properties-title-color: #475569; /* slate-600 */
+            --properties-label-color: #1e293b; /* slate-800 */
+            --tag-chip-bg: #cbd5e1; /* slate-300 */
+            --tag-chip-text: #1e293b; /* slate-800 */
+            --wikilink-color: #2563eb; /* blue-600 */
+            --broken-link-color: #94a3b8; /* slate-400 */
+            --loading-overlay-bg: rgba(255, 255, 255, 0.8);
+        }
+
+        :root[data-theme='dark'] {
+            --bg-color: #1e293b; /* slate-800 */
+            --text-color: #e2e8f0; /* slate-200 */
+            --sidebar-bg: #0f172a; /* slate-900 */
+            --sidebar-text: #cbd5e1; /* slate-300 */
+            --sidebar-border: #334155; /* slate-700 */
+            --nav-hover-bg: #1e293b; /* slate-800 */
+            --nav-active-bg: #fbbf24; /* amber-400 */
+            --nav-active-text: #1e293b; /* slate-800 */
+            --note-bg: #2d3748; /* darker blue-grey */
+            --note-border: #4a5568; /* even darker blue-grey */
+            --properties-bg: #334155; /* slate-700 */
+            --properties-border: #475569; /* slate-600 */
+            --properties-title-color: #a0aec0; /* slate-400 */
+            --properties-label-color: #e2e8f0; /* slate-200 */
+            --tag-chip-bg: #4a5568; /* slate-600 */
+            --tag-chip-text: #e2e8f0; /* slate-200 */
+            --wikilink-color: #63b3ed; /* blue-300 */
+            --broken-link-color: #718096; /* slate-500 */
+            --loading-overlay-bg: rgba(0, 0, 0, 0.7);
+        }
+
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8fafc; /* slate-50 */
-            color: #334155; /* slate-700 */
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
         /* Custom scrollbar for better appearance, potentially overlay on Webkit browsers */
         ::-webkit-scrollbar {
@@ -28,97 +75,110 @@
             background: transparent; /* Make track transparent for overlay effect */
         }
         ::-webkit-scrollbar-thumb {
-            background: #94a3b8; /* slate-400 */
+            background: var(--sidebar-border); /* using a variable for thumb color */
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #64748b; /* slate-600 */
+            background: var(--properties-title-color); /* darker on hover */
         }
         /* Active nav link styling for main pages/sections */
         .nav-link.active {
-            background-color: #fbbf24; /* amber-400 */
-            color: #1e293b; /* slate-800 */
+            background-color: var(--nav-active-bg);
+            color: var(--nav-active-text);
             font-weight: 600;
         }
         /* Styles for markdown content, more extensive on this page */
-        .markdown-content h1 { font-size: 2.25rem; font-weight: 700; margin-bottom: 1rem; }
-        .markdown-content h2 { font-size: 1.875rem; font-weight: 600; margin-bottom: 0.75rem; }
-        .markdown-content h3 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
-        .markdown-content h4 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; }
-        .markdown-content p { margin-bottom: 0.75rem; line-height: 1.6; }
+        .markdown-content h1 { font-size: 2.5rem; /* H1: 40px */ font-weight: 700; margin-bottom: 1rem; color: var(--text-color); }
+        .markdown-content h2 { font-size: 2rem; /* H2: 32px */ font-weight: 600; margin-bottom: 0.75rem; color: var(--text-color); }
+        .markdown-content h3 { font-size: 1.75rem; /* H3: 28px */ font-weight: 600; margin-bottom: 0.5rem; color: var(--text-color); }
+        .markdown-content h4 { font-size: 1.5rem; /* H4: 24px */ font-weight: 600; margin-bottom: 0.5rem; color: var(--text-color); }
+        .markdown-content h5 { font-size: 1.25rem; /* H5: 20px */ font-weight: 600; margin-bottom: 0.5rem; color: var(--text-color); }
+        .markdown-content h6 { font-size: 1rem; /* H6: 16px */ font-weight: 600; margin-bottom: 0.5rem; color: var(--text-color); }
+        .markdown-content p { margin-bottom: 0.75rem; line-height: 1.6; color: var(--text-color); }
         .markdown-content ul, .markdown-content ol { list-style-position: inside; margin-bottom: 0.75rem; padding-left: 1.5rem; }
         .markdown-content ul li { list-style-type: disc; }
         .markdown-content ol li { list-style-type: decimal; }
         .markdown-content b, .markdown-content strong { font-weight: 700; }
         .markdown-content em, .markdown-content i { font-style: italic; }
-        .markdown-content hr { border-top: 1px solid #e2e8f0; margin: 1.5rem 0; }
-        .markdown-content pre { background-color: #f1f5f9; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
-        .markdown-content code { background-color: #f1f5f9; padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-family: monospace; }
-        .markdown-content blockquote { border-left: 4px solid #94a3b8; padding-left: 1rem; margin: 1rem 0; color: #64748b; }
+        .markdown-content hr { border-top: 1px solid var(--note-border); margin: 1.5rem 0; }
+        .markdown-content pre { background-color: var(--properties-bg); padding: 1rem; border-radius: 0.5rem; overflow-x: auto; color: var(--text-color); }
+        .markdown-content code { background-color: var(--tag-chip-bg); padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-family: monospace; color: var(--text-color); }
+        .markdown-content blockquote { border-left: 4px solid var(--properties-title-color); padding-left: 1rem; margin: 1rem 0; color: var(--properties-title-color); }
         .markdown-content table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
-        .markdown-content th, .markdown-content td { border: 1px solid #cbd5e1; padding: 0.75rem; text-align: left; }
-        .markdown-content th { background-color: #e2e8f0; }
+        .markdown-content th, .markdown-content td { border: 1px solid var(--note-border); padding: 0.75rem; text-align: left; color: var(--text-color); }
+        .markdown-content th { background-color: var(--properties-bg); }
         /* Style for wikilinks */
         .markdown-content a.wikilink {
-            color: #2563eb; /* blue-600 */
+            color: var(--wikilink-color);
             text-decoration: none;
             font-weight: 500;
         }
         .markdown-content a.wikilink:hover {
             text-decoration: underline;
         }
+        /* Broken links */
+        .markdown-content a.broken-wikilink {
+            color: var(--broken-link-color);
+            text-decoration: none;
+            border-bottom: 1px dotted var(--broken-link-color); /* Dotted underline */
+            cursor: not-allowed; /* Indicate it's broken */
+        }
+        .markdown-content a.broken-wikilink:hover {
+            text-decoration: none; /* No solid underline on hover */
+        }
+
         /* Specific styling for properties box */
         .properties-box {
-            background-color: #f1f5f9; /* slate-100 */
-            border: 1px solid #e2e8f0; /* slate-200 */
+            background-color: var(--properties-bg);
+            border: 1px solid var(--properties-border);
             border-radius: 0.5rem;
             padding: 1rem;
             margin-bottom: 1.5rem;
             line-height: 1.5; /* Adjusted for better readability inside box */
+            color: var(--text-color); /* Ensure text within box uses theme color */
         }
         .properties-box-title {
             font-size: 0.875rem; /* text-sm */
             font-weight: 600;
-            color: #475569; /* slate-600 */
+            color: var(--properties-title-color);
             margin-bottom: 0.75rem;
             display: flex;
             align-items: center;
         }
         .properties-item {
             display: flex;
-            align-items: flex-start; /* Align items to start for multi-line values */
+            align-items: flex-start;
             margin-bottom: 0.5rem;
-            font-size: 0.875rem; /* text-sm */
-            color: #334155; /* slate-700 */
+            font-size: 0.875rem;
         }
         .properties-item:last-child {
             margin-bottom: 0;
         }
         .properties-label {
-            font-weight: 500; /* font-medium */
-            color: #1e293b; /* slate-800 */
-            width: 80px; /* Fixed width for labels */
-            flex-shrink: 0; /* Prevent label from shrinking */
+            font-weight: 500;
+            color: var(--properties-label-color);
+            width: 80px;
+            flex-shrink: 0;
             margin-right: 0.5rem;
-            padding-top: 0.125rem; /* Small padding for vertical alignment */
+            padding-top: 0.125rem;
         }
         .properties-value {
             flex-grow: 1;
-            display: flex; /* For tags, to allow flex wrapping */
-            flex-wrap: wrap; /* Allow tags to wrap */
-            gap: 0.25rem; /* Gap between tags */
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
         }
         .tag-chip {
-            display: inline-flex; /* Use inline-flex for better alignment */
+            display: inline-flex;
             align-items: center;
-            background-color: #cbd5e1; /* slate-300 */
-            color: #1e293b; /* slate-800 */
-            font-size: 0.75rem; /* text-xs */
+            background-color: var(--tag-chip-bg);
+            color: var(--tag-chip-text);
+            font-size: 0.75rem;
             font-weight: 500;
             padding: 0.2rem 0.6rem;
-            border-radius: 4px; /* Slightly less rounded than full for a squarer look */
-            line-height: 1; /* Adjust line height for better vertical centering */
-            height: 1.5rem; /* Fixed height for consistent tag size */
+            border-radius: 4px;
+            line-height: 1;
+            height: 1.5rem;
         }
         .loading-overlay {
             position: fixed;
@@ -126,40 +186,74 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(255, 255, 255, 0.8);
+            background-color: var(--loading-overlay-bg);
             display: flex;
-            justify-content: center;
+            flex-direction: column; /* To stack spinner and text */
             align-items: center;
-            z-index: 100;
-            font-size: 1.5rem;
-            color: #1e293b;
+            justify-content: center;
+            z-index: 50;
+            transition: opacity 0.3s ease;
         }
-        /* Styling for the note list items to fit the sidebar */
+        .loader {
+            border-top-color: #f97316; /* amber-500 */
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+            border-radius: 50%;
+            border: 4px solid rgba(255, 255, 255, 0.2); /* Lighter border for spinner background */
+            border-top-color: #fbbf24; /* amber-400 */
+            width: 36px;
+            height: 36px;
+        }
+        .loading-overlay p {
+            color: white;
+            margin-top: 0.5rem;
+            font-size: 1rem;
+        }
+        @-webkit-keyframes spinner {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Sidebar and Note List Styling */
+        aside {
+            background-color: var(--sidebar-bg);
+            color: var(--sidebar-text);
+            border-right: 1px solid var(--sidebar-border); /* Subtle border for separation */
+        }
+        aside .border-b {
+            border-color: var(--sidebar-border);
+        }
+        aside .text-amber-400 { color: #fbbf24; } /* Fixed amber for title */
+        aside .hover\:text-amber-300:hover { color: #fcd34d; }
+
         .note-list-item-link,
         .note-list-folder-toggle {
-            display: flex; /* Use flex to align icon and text */
+            display: flex;
             align-items: center;
             padding: 0.25rem 0.5rem; /* Adjusted padding to be more compact */
-            border-radius: 0.25rem; /* Slightly less rounded */
-            color: #f1f5f9; /* slate-100 */
+            border-radius: 0.25rem;
+            color: var(--sidebar-text);
             transition: background-color 0.2s, color 0.2s;
             text-decoration: none;
-            width: 100%; /* Make them take full width of their LI parent */
+            width: 100%;
             box-sizing: border-box; /* Include padding in width calculation */
 
-            /* Text overflow properties */
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            line-height: 1.5; /* Ensure good line height */
+            line-height: 1.5;
         }
         .note-list-item-link:hover,
         .note-list-folder-toggle:hover {
-            background-color: #334155; /* slate-700 */
+            background-color: var(--nav-hover-bg);
         }
         .note-list-item-link.active-note {
-            background-color: #fbbf24; /* amber-400 */
-            color: #1e293b; /* slate-800 */
+            background-color: var(--nav-active-bg);
+            color: var(--nav-active-text);
             font-weight: 400; /* No bold */
         }
         .note-list-folder-toggle {
@@ -168,22 +262,23 @@
             user-select: none;
         }
         .toggle-icon {
-            margin-right: 0.5rem; /* mr-2 */
-            width: 1rem; /* Fixed width for icon */
-            flex-shrink: 0; /* Prevent icon from shrinking */
-            transform-origin: center center; /* Ensure rotation is from center */
-            transition: transform 0.15s ease-in-out; /* Smooth rotation */
+            margin-right: 0.5rem;
+            width: 1rem;
+            flex-shrink: 0;
+            transform-origin: center center;
+            transition: transform 0.15s ease-in-out;
+            color: var(--sidebar-text); /* Ensure icon color follows theme */
         }
         .toggle-icon.rotated {
             transform: rotate(90deg);
         }
         /* Styling for the nested ULs to create the indent line */
         .folder-item-sub-list {
-            margin-left: 1.25rem; /* Indent the sub-list */
-            border-left: 1px solid #475569; /* slate-600 border */
-            padding-left: 0.25rem; /* Padding for content inside the bordered area */
-            padding-top: 0.25rem; /* Small padding at the top of the sub-list */
-            padding-bottom: 0.25rem; /* Small padding at the bottom of the sub-list */
+            margin-left: 1.25rem; /* Increased indent */
+            border-left: 1px solid var(--sidebar-border);
+            padding-left: 0.25rem;
+            padding-top: 0.25rem;
+            padding-bottom: 0.25rem;
         }
         /* Ensure LI elements within the nested UL do not add extra padding,
            their padding is handled by the link/toggle inside */
@@ -192,8 +287,8 @@
         }
         /* Specific styling for the 'Note Library' active text in sidebar */
         .sidebar-active-text {
-            background-color: #fbbf24; /* amber-400 */
-            color: #1e293b; /* slate-800 */
+            background-color: var(--nav-active-bg);
+            color: var(--nav-active-text);
             font-weight: 600;
             display: block;
             padding: 0.5rem 1rem;
@@ -204,6 +299,13 @@
         /* Adjust the note list container's padding to make the scrollbar feel more overlay */
         #note-list-container {
             padding-right: 0.25rem; /* Slightly reduce padding to give scrollbar more "hover" room */
+            /* Crucial: Reserve space for the scrollbar always */
+            overflow-y: scroll;
+        }
+        /* Also apply to the main note content area */
+        #note-content {
+            overflow-y: scroll;
+            padding-right: 0.25rem; /* Same logic for content area */
         }
     </style>
 </head>
@@ -211,13 +313,14 @@
 
     <!-- Loading Overlay for general app loading -->
     <div id="loading-overlay" class="loading-overlay hidden">
-        Loading data...
+        <div class="loader"></div>
+        <p>Loading data...</p>
     </div>
 
     <div class="flex h-screen bg-slate-50">
         <!-- Sidebar Navigation -->
-        <aside class="w-64 bg-slate-800 text-slate-100 flex flex-col fixed h-full">
-            <div class="h-16 flex items-center justify-center border-b border-slate-700">
+        <aside class="w-64 flex flex-col fixed h-full">
+            <div class="h-16 flex items-center justify-center border-b">
                 <a href="explorer.html#world" id="home-link" class="text-2xl font-bold text-amber-400 hover:text-amber-300 transition-colors duration-200">Kedem Anvil</a>
             </div>
 
@@ -226,10 +329,15 @@
                 <a href="explorer.html#world" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">The World (Explorer)</a>
                 <!-- Static text for the current page (Note Library) -->
                 <span class="sidebar-active-text flex items-center">Note Library</span>
+                <button id="theme-toggle" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700 w-full text-left">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                    <span>Toggle Theme</span>
+                </button>
             </nav>
 
+
             <!-- Note-specific sidebar content below main navigation -->
-            <div class="flex-auto p-4 overflow-y-auto border-t border-slate-700" id="note-list-container">
+            <div class="flex-auto p-4 border-t" id="note-list-container">
                 <h3 class="text-xl font-bold text-teal-300 mb-3">Notes</h3>
                 <ul id="note-list" class="space-y-1">
                     <!-- Note list will be injected here by JavaScript -->
@@ -248,21 +356,21 @@
             <div class="grid grid-cols-3 gap-6 h-full">
                 <!-- Main Note Display Area (2/3 width) -->
                 <div class="col-span-2 flex flex-col h-full">
-                    <h2 id="note-display-title" class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">Select a Note</h2>
-                    <div id="note-content" class="markdown-content bg-white p-6 rounded-xl shadow-sm text-base text-slate-700 leading-relaxed flex-1 overflow-y-auto">
+                    <h2 id="note-display-title" class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2" style="color: var(--text-color); border-color: var(--nav-active-bg);">Select a Note</h2>
+                    <div id="note-content" class="markdown-content bg-white p-6 rounded-xl shadow-sm text-base leading-relaxed flex-1" style="background-color: var(--note-bg); color: var(--text-color);">
                         <p>Select a note from the left panel to display its content.</p>
                     </div>
                 </div>
 
                 <!-- Right Chat/LLM Placeholder Panel (1/3 width) -->
-                <div id="chat-panel" class="col-span-1 bg-white p-6 rounded-xl shadow-sm flex flex-col h-full">
+                <div id="chat-panel" class="col-span-1 p-6 rounded-xl shadow-sm flex flex-col h-full" style="background-color: var(--note-bg); color: var(--text-color);">
                     <h3 class="text-2xl font-bold text-teal-700 mb-4">Chat/AI Assistant</h3>
-                    <div class="flex-1 overflow-y-auto bg-slate-50 p-3 rounded-lg border border-slate-200 text-sm text-slate-700">
+                    <div class="flex-1 overflow-y-auto p-3 rounded-lg border text-sm" style="background-color: var(--properties-bg); border-color: var(--properties-border); color: var(--text-color);">
                         <p>This panel can be used for chat or AI interactions.</p>
-                        <p class="mt-2 text-slate-500 italic">Future LLM integration will go here.</p>
+                        <p class="mt-2 italic" style="color: var(--properties-title-color);">Future LLM integration will go here.</p>
                     </div>
                     <div class="mt-4">
-                        <input type="text" placeholder="Type your message..." class="w-full p-2 border border-slate-300 rounded-md text-sm focus:ring-amber-400 focus:border-amber-400">
+                        <input type="text" placeholder="Type your message..." class="w-full p-2 border rounded-md text-sm focus:ring-amber-400 focus:border-amber-400" style="background-color: var(--properties-bg); border-color: var(--properties-border); color: var(--text-color);">
                         <button class="w-full mt-2 bg-amber-600 text-white py-2 rounded-md hover:bg-amber-700 transition shadow text-sm">Send</button>
                     </div>
                 </div>
