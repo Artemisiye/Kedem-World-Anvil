@@ -1,7 +1,8 @@
 // deity-manager.js
 import { collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { APP_ID } from './firebase-init.js'; // Import APP_ID
-import { initialDeityDataFallback } from './data-constants.js'; // Import initial data
+import { APP_ID } from './firebase-init.js'; 
+import { initialDeityDataFallback } from './data-constants.js'; 
+import { loreFiles } from './data-constants.js'; // Import loreFiles to pass to wikilink resolver
 
 // Marked.js is globally available via CDN link in index.html, no import needed here.
 
@@ -9,6 +10,7 @@ let deityData = [];
 let currentDeityDocId = null; 
 let db = null;
 let currentUserId = null;
+let isCurrentUserEditor = false; // New flag for editor status
 
 // UI elements (passed from ui-manager or accessed directly if necessary)
 const deityGrid = document.getElementById('deity-grid');
@@ -42,9 +44,19 @@ const editDeityDomain = document.getElementById('edit-deity-domain');
 
 let activeRankFilter = 'All';
 
-export function initializeDeityManager(firestoreInstance, userIdParam) {
+export function initializeDeityManager(firestoreInstance, userIdParam, isEditorParam) {
     db = firestoreInstance;
     currentUserId = userIdParam;
+    isCurrentUserEditor = isEditorParam; // Set editor status
+
+    // Adjust edit button visibility based on editor status
+    if (deityModalEditButton) { // Ensure button exists before trying to access
+        if (isCurrentUserEditor) {
+            deityModalEditButton.classList.remove('hidden');
+        } else {
+            deityModalEditButton.classList.add('hidden');
+        }
+    }
 
     // Set up real-time listener for deities collection
     const deitiesColRef = collection(db, `artifacts/${APP_ID}/public/data/deities`);
@@ -184,12 +196,12 @@ function openDeityModal(deity) {
         additionalHtml += `<p><b class="font-semibold">Favors</b>: ${deity.favors}</p>`;
     }
     if (deity.startingBoon) {
-        let boonText = '';
-        if (Array.isArray(deity.startingBoon)) {
-            boonText = deity.startingBoon.join(', ');
-        } else {
-            boonText = deity.startingBoon;
-        }
+         let boonText = '';
+         if (Array.isArray(deity.startingBoon)) {
+             boonText = deity.startingBoon.join(', ');
+         } else {
+             boonText = deity.startingBoon;
+         }
         additionalHtml += `<p><b class="font-semibold">Starting Boon</b>: ${boonText}</p>`;
     }
     if (deity.domain) {
@@ -205,6 +217,15 @@ function openDeityModal(deity) {
     editDeityFavors.value = deity.favors || '';
     editDeityStartingBoon.value = Array.isArray(deity.startingBoon) ? deity.startingBoon.join(', ') : (deity.startingBoon || '');
     editDeityDomain.value = deity.domain || '';
+
+    // Conditionally show/hide edit button based on editor status
+    if (deityModalEditButton) {
+        if (isCurrentUserEditor) {
+            deityModalEditButton.classList.remove('hidden');
+        } else {
+            deityModalEditButton.classList.add('hidden');
+        }
+    }
 
     modalViewMode.classList.remove('hidden');
     modalEditMode.classList.add('hidden');
@@ -222,8 +243,9 @@ function toggleEditMode() {
 }
 
 async function saveDeityChanges() {
-    if (!db || !currentUserId) {
-        console.error("Firestore not initialized or user not authenticated.");
+    if (!db || !currentUserId || !isCurrentUserEditor) { // Check isCurrentUserEditor
+        console.error("Firestore not initialized, user not authenticated, or not authorized to edit.");
+        // Potentially show a user-friendly message
         return;
     }
     if (currentDeityDocId) {

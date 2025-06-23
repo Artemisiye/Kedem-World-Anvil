@@ -453,14 +453,17 @@
               const match = rule.exec(src);
               if (match) {
                 // Determine the base path for the wikilink target
-                // This assumes all wikilinks point to files directly within /notes/ or a subfolder of /notes/
-                let targetWikiName = match[1].trim(); // Get the raw name
+                let targetWikiName = match[1].trim(); 
                 const githubBasePath = `https://github.com/Artemisiye/Kedem-World-Anvil/blob/main/notes/`;
                 
                 // Try to find a direct match or a match ending with the target name
+                // Use window.loreFiles as it's defined in data-constants and imported
                 const resolvedFilePath = window.loreFiles.find(f => 
-                    f.toLowerCase() === `${targetWikiName.toLowerCase()}.md` || // Direct match at root of notes
-                    f.toLowerCase().endsWith(`/${targetWikiName.toLowerCase()}.md`) // Ends with the target name (for nested files)
+                    f.toLowerCase() === `${targetWikiName.toLowerCase()}.md` || 
+                    f.toLowerCase().endsWith(`/${targetWikiName.toLowerCase()}.md`) ||
+                    // Handle cases like [[God|Gods]] where "God" needs to find "World Building/Gods/God.md"
+                    // Or if a direct filename without path is used in the wikilink, e.g., [[Will Power]]
+                    f.toLowerCase().split('/').pop() === `${targetWikiName.toLowerCase()}.md`
                 );
                 
                 let href;
@@ -500,9 +503,71 @@
                     // For external links, open in new tab
                     return `<a href="${token.href}" class="wikilink" target="_blank">${token.text}</a>`;
                 }
+            },
+            // Custom paragraph renderer for metadata and single line breaks
+            paragraph(text) {
+                // Heuristic to detect YAML frontmatter lines or custom properties (tags, aliases, etc.)
+                if (text.startsWith('---') || text.includes('::') || text.startsWith('aliases:') || text.startsWith('tags:') || text.startsWith('NpcAggresion:') || text.startsWith('NpcTags:') || text.startsWith('BaseValue:') || text.startsWith('## Offerings:') || text.startsWith('## Favors:') || text.startsWith('## Starting Boon:')) {
+                    const lines = text.split('<br>'); // marked with breaks:true will use <br>
+                    let formattedHtml = '';
+                    lines.forEach(line => {
+                        line = line.trim();
+                        if (line === '---') {
+                            formattedHtml += `<hr class="my-2 border-slate-300">`; // Horizontal rule for YAML frontmatter
+                        } else if (line.startsWith('aliases:')) {
+                            const aliases = line.substring('aliases:'.length).trim();
+                            if (aliases) {
+                                formattedHtml += `<p class="metadata-line"><strong>Aliases:</strong> ${aliases}</p>`;
+                            }
+                        } else if (line.startsWith('tags:')) {
+                            const tagsContent = line.substring('tags:'.length).trim();
+                            const tags = tagsContent.split(/[\s,]+-/).map(t => t.replace('-', '').trim()).filter(t => t); // Split by '- ' or ', '
+                            if (tags.length > 0) {
+                                formattedHtml += `<p class="metadata-line"><strong>Tags:</strong> ${tags.map(tag => `<span class="tag-chip">${tag}</span>`).join('')}</p>`;
+                            }
+                        } else if (line.includes('::')) { // For Description::, NpcAggresion:: etc.
+                            const [propName, propValue] = line.split('::', 2).map(s => s.trim());
+                            if (propName && propValue) {
+                                formattedHtml += `<p class="property-line"><strong>${propName}:</strong> ${propValue}</p>`;
+                            }
+                        } else if (line.startsWith('## ')) { // For Offerings, Favors, Starting Boon headers
+                             formattedHtml += `<h4 class="text-md font-semibold text-teal-700 mt-3 mb-1">${line.substring(3).trim()}</h4>`;
+                        } else if (line.startsWith('- ') && !line.startsWith('--')) { // For list items not starting with '---'
+                             formattedHtml += `<p class="text-sm ml-4">• ${line.substring(2).trim()}</p>`; // Simple list item
+                        } else if (line.startsWith('BaseValue:')) {
+                            formattedHtml += `<p class="property-line"><strong>${line.split(':')[0].trim()}:</strong> ${line.split(':')[1].trim()}</p>`;
+                        }
+                         else {
+                            formattedHtml += `<p>${line}</p>`; // Default paragraph for other lines in the block
+                        }
+                    });
+                    return formattedHtml; // Return raw HTML for complex metadata block
+                }
+                // Handle image syntax like ![[Map.png]]
+                if (text.startsWith('![[')) {
+                    const imgFileName = text.match(/!\[\[(.*?)\]\]/);
+                    if (imgFileName && imgFileName[1]) {
+                        // Assuming images are in the same folder as the markdown or directly in the notes root if not specified.
+                        // This is a heuristic and might need refinement for complex image paths.
+                        const currentFilePath = document.getElementById('lore-note-title').dataset.rawfilepath || ''; // Get current note's full path
+                        const fileDir = currentFilePath.substring(0, currentFilePath.lastIndexOf('/') + 1);
+                        const imgPathBase = `https://raw.githubusercontent.com/Artemisiye/Kedem-World-Anvil/main/notes/`;
+                        
+                        let imageSrc = `${imgPathBase}${imgFileName[1]}`;
+                        if (imgFileName[1].includes('/')) {
+                            // If the image path itself contains directories
+                            imageSrc = `${imgPathBase}${imgFileName[1]}`;
+                        } else if (fileDir) {
+                            // If markdown file is nested, try relative path
+                            imageSrc = `${imgPathBase}${fileDir}${imgFileName[1]}`;
+                        }
+                        
+                        return `<p><img src="${imageSrc}" alt="${imgFileName[1]}" class="max-w-full h-auto rounded-lg shadow-md mx-auto my-4"></p>`;
+                    }
+                }
+                return `<p>${text}</p>`; // Default paragraph rendering
             }
-          }]
-        });
+          });
 
         // Configure marked to handle single newlines as breaks
         marked.setOptions({
