@@ -119,105 +119,6 @@ export function setupNoteLibrary(loadingOverlay, noteList, noteContentElement, n
     if (noteContentElement) noteContentElement.innerHTML = '<p class="text-slate-500">Select a note from the left panel to view its content.</p>';
 }
 
-/**
- * Placeholder for showing a link preview.
- * @param {string} filePath - The path of the note to preview.
- */
-function showLinkPreview(filePath) {
-    console.log(`Showing preview for: ${filePath}`);
-    // Implement your preview logic here:
-    // 1. Create a small modal/tooltip element.
-    // 2. Fetch a snippet of the note's content (or just its title/aliases).
-    // 3. Position the modal near the hovered link.
-}
-
-/**
- * Placeholder for hiding a link preview.
- */
-function hideLinkPreview() {
-    console.log('Hiding preview.');
-    // Implement logic to hide/remove the preview modal/tooltip.
-}
-
-// Custom Marked.js extension for wikilinks, updated to handle broken links and hover
-marked.use({
-    extensions: [{
-        name: 'wikilink',
-        level: 'inline',
-        start(src) { return src.indexOf('[['); },
-        tokenizer(src, tokens) {
-            const rule = /^\\[\\[([^|\\]]+?)(?:\\|([^\\]]+?))?\\]\\]/;
-            const match = rule.exec(src);
-            if (match) {
-                let targetWikiName = match[1].trim();
-                const githubBasePath = `https://raw.githubusercontent.com/Artemisiye/Kedem-World-Anvil/main/notes/`;
-
-                // Normalize targetWikiName for lookup by replacing spaces with %20
-                // For direct comparison with noteFiles, we need to match the *actual* file path
-                const resolvedFilePath = window.noteFiles.find(f =>
-                    // Check for exact match
-                    f.toLowerCase() === `${targetWikiName.toLowerCase()}.md` ||
-                    // Check if targetWikiName is the filename (case-insensitive)
-                    f.toLowerCase().split('/').pop().replace('.md', '').replace(/([A-Z])/g, ' $1').trim().toLowerCase() === targetWikiName.toLowerCase() ||
-                    // Check for full path match if targetWikiName includes folders
-                    f.toLowerCase() === `${targetWikiName.toLowerCase().replace(/ /g, '%20')}.md` // handle encoded spaces in comparison
-                );
-
-
-                let href = '';
-                let isInternal = false;
-                let isBroken = false;
-                let actualFilePathForLink = ''; // The path that will go into data-filepath for internal links
-
-                if (resolvedFilePath) {
-                    // Internal link, found in our noteFiles
-                    isInternal = true;
-                    // The href for internal links should just be the hash fragment
-                    href = `note-library.html#note-library:${encodeURIComponent(resolvedFilePath)}`;
-                    actualFilePathForLink = resolvedFilePath; // Use the actual resolved path for data-filepath
-                } else {
-                    // Not found in our internal noteFiles, treat as potentially broken or external
-                    isInternal = false;
-                    isBroken = true; // Mark as broken
-                    // Fallback to a GitHub raw link or just a placeholder
-                    href = `${githubBasePath}${encodeURIComponent(targetWikiName)}.md`; // Still try to link to GitHub
-                    actualFilePathForLink = targetWikiName; // Still provide for potential debugging
-                }
-
-                return {
-                    type: 'wikilink',
-                    raw: match[0],
-                    page: targetWikiName,
-                    text: match[2] || targetWikiName.split('/').pop().replace('.md', '').replace(/([A-Z])/g, ' $1').trim(), // Display text
-                    href: href,
-                    isInternal: isInternal,
-                    isBroken: isBroken, // Custom property for broken status
-                    resolvedPath: actualFilePathForLink // Store the exact path for later use
-                };
-            }
-        }
-    },
-    renderer(token) {
-        if (token.type === 'wikilink') {
-            let classList = ['wikilink'];
-            let dataAttributes = `data-filepath="${token.resolvedPath}"`; // Always include resolvedPath
-
-            if (token.isInternal) {
-                classList.push('internal-wikilink');
-            }
-            if (token.isBroken) {
-                classList.push('broken-wikilink');
-            }
-
-            // Add hover events for preview
-            const hoverEvents = `onmouseover="window.showLinkPreview('${token.resolvedPath}')" onmouseout="window.hideLinkPreview()"`;
-
-            return `<a href="${token.href}" class="${classList.join(' ')}" ${dataAttributes} ${hoverEvents}>${token.text}</a>`;
-        }
-        return false; // Return false for default renderer to handle other tokens
-    }]
-});
-
 export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentElement, noteDisplayMainTitle) {
     if (loadingOverlay) loadingOverlay.classList.remove('hidden');
     if (noteContentElement) noteContentElement.innerHTML = '';
@@ -242,6 +143,7 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
         let foundFirstDashLine = false;
         let propertiesHtml = ''; // Accumulate HTML for properties box
         let hasProperties = false;
+        let mainContentStarted = false; // Flag to indicate when markdown content starts
 
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i];
@@ -253,6 +155,8 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                     continue; // Skip the first '---' line
                 } else if (inFrontmatter) {
                     inFrontmatter = false;
+                    // End of frontmatter, propertiesHtml is now complete
+                    mainContentStarted = true; // Main content will start after this
                     continue; // Skip the second '---' line
                 }
             }
@@ -286,7 +190,8 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                         hasProperties = true;
                     }
                 }
-                 else if (line.includes('::')) { // Generic property handler for key:: value
+                // Generic property handler for key:: value
+                 else if (line.includes('::')) {
                     const [propName, propValue] = line.split('::', 2).map(s => s.trim());
                     if (propName && propValue) {
                         propertiesHtml += `
@@ -300,8 +205,9 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                 }
                 // For other content within frontmatter that's not a standard property, add as a metadata line
                 else if (line.trim() !== '') {
+                    // This catches things like descriptions directly under '---' if not a key::value
                     propertiesHtml += `<p class="metadata-line">${markedInstance.parseInline(line.trim())}</p>`;
-                    hasProperties = true;
+                    hasProperties = true; // Consider any content here as part of properties
                 }
             } else {
                 // If not in frontmatter, add the line to be parsed as standard markdown
@@ -322,7 +228,7 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                 </div>
             `;
         }
-        finalContentHtml += markedInstance.parse(processedMarkdownLines.join('\n'));
+        finalContentHtml += markedInstance.parse(processedMarkdownLines.join('\n')); // Join remaining lines for main content
 
         if (noteContentElement) noteContentElement.innerHTML = finalContentHtml;
 
