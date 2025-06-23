@@ -65,7 +65,7 @@
     <!-- Application Structure Plan: A responsive single-page application with a fixed sidebar for primary navigation and a dynamic main content area. This structure allows users to easily switch between core topics (World, Pantheon, Bestiary, Gameplay, Lore Library) without losing context. The "Lore Library" section will dynamically fetch and display Markdown content from specific URLs. The key interaction is the "Pantheon Explorer," a filterable and searchable card grid, designed to make the large, complex hierarchy of deities manageable and easy to explore. This non-linear, thematic structure is more user-friendly for a GDD than a simple linear document, facilitating quick lookups and discovery of relationships between entities. -->
     <!-- Visualization & Content Choices: 
         - Pantheon: Goal: Organize & Compare. Method: Interactive card grid with filters for rank/influence and a search bar. When a card is clicked, a modal displays detailed information about the deity, now with editable fields for in-session modification and *permanent saving to Firestore*. This handles the large dataset effectively and provides drill-down functionality. Library: Vanilla JS + Tailwind, Chart.js, Firestore.
-        - Lore Library: Goal: Inform & Explore Textual Content. Method: Navigation list of Markdown files, dynamically fetching and rendering their content when clicked. Enhanced with custom Marked.js extension for [[wikilinks]]. Library: Vanilla JS + marked.js + Tailwind.
+        - Lore Library: Goal: Inform & Explore Textual Content. Method: Navigation list of Markdown files, dynamically fetching and rendering their content when clicked. Enhanced with custom Marked.js extension for [[wikilinks]] and improved line break handling. Library: Vanilla JS + marked.js + Tailwind.
         - Gameplay Progression: Goal: Show Change. Method: Clickable horizontal timeline. This visualizes the game's flow. Library: HTML/CSS + JS for interaction.
         - Player Attributes: Goal: Inform & Explain Relationships. Method: A dynamic HTML/CSS diagram instead of a simple chart, showing how core attributes like Vitality and Resilience contribute to Effective Health. This is more explanatory than a basic bar chart. Library: HTML/CSS + JS.
         - Factions (Humans, Goblins, etc.): Goal: Compare. Method: Side-by-side content cards to highlight differences. Library: Tailwind Grid.
@@ -263,7 +263,7 @@
                     </div>
 
                     <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="text-2xl font-bold text-teal-700 mb-4">Mana and Sentience</h3>
+                        <h3 class="2xl font-bold text-teal-700 mb-4">Mana and Sentience</h3>
                         <p class="text-base leading-relaxed">Mana is the fundamental energy of creation. Particles of mana are naturally attracted to each other and to mass, forming vast clouds of energy that eventually coalesce into consciousness, a spirit, or a soul. The larger and denser an entity—be it a star, a mountain, or a living being—the greater its mana concentration, and thus its potential for intelligence and magical power. This principle explains why cosmic bodies like Gaia and the Sun are sentient, and why colossal beings like Dragons and Titans are innately magical, capable of bending reality through sheer will. Mortals, with their limited mana, must rely on spells, rituals, and artifacts to channel this power.</p>
                     </div>
 
@@ -312,7 +312,7 @@
                         </div>
                     </div>
                     <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="text-2xl font-bold text-teal-700 mb-4">Titans</h3>
+                        <h3 class="2xl font-bold text-teal-700 mb-4">Titans</h3>
                         <p class="text-base leading-relaxed">Gigantic beings of immense power, Titans were originally created by Gaia as her first protectors. Some, however, have fallen to the chaotic influence of the Outer Gods. Titans often embody the raw forces of nature—mountains, oceans, storms, and more. Once vanquished, they do not truly die, but slowly reform over vast spans of time, their essence forever part of the world they shape.</p>
                     </div>
                 </div>
@@ -416,8 +416,8 @@
                 <h3 id="modal-deity-name" class="text-3xl font-bold text-slate-800 mb-3"></h3>
                 <p id="modal-deity-aliases" class="text-lg text-slate-500 italic mb-4"></p>
                 <div id="modal-deity-tags" class="flex flex-wrap gap-2 mb-4"></div>
-                <p id="modal-deity-description" class="text-base text-slate-600 leading-relaxed"></p>
-                <div id="modal-deity-additional" class="mt-4 space-y-2 text-base text-slate-700">
+                <div id="modal-deity-description-rendered" class="markdown-content text-base text-slate-600 leading-relaxed"></div>
+                <div id="modal-deity-additional-rendered" class="mt-4 space-y-2 text-base text-slate-700 markdown-content">
                     <!-- Additional structured details like offerings, favors, boons will go here -->
                 </div>
                 <div class="mt-6 flex justify-end">
@@ -461,6 +461,56 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, query, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // MARKED.JS CUSTOM EXTENSION FOR WIKILINKS AND OPTIONS
+        marked.use({
+          extensions: [{
+            name: 'wikilink',
+            level: 'inline', // This is an inline extension
+            start(src) { return src.indexOf('[['); }, // The character to look for to start the parsing
+            tokenizer(src, tokens) {
+              const rule = /^\[\[([^|\]]+?)(?:\|([^\]]+?))?\]\]/; // Regex to capture [[link|text]] or [[link]]
+              const match = rule.exec(src);
+              if (match) {
+                // Determine the base path for the wikilink target
+                // This assumes all wikilinks point to files directly within /notes/ or a subfolder of /notes/
+                let targetFileName = match[1].split('/').pop().replace(/([A-Z])/g, ' $1').trim(); // Get the last part and clean
+                targetFileName = targetFileName.replace(/ /g, '%20') + '.md'; // Convert spaces for URL and add .md
+                
+                // For direct links, we need to try and guess the path, or provide a generic one.
+                // For now, we'll assume they are relative to the 'notes' directory.
+                // A more robust solution might involve a mapping from wiki page name to full GitHub path.
+                const githubBasePath = `https://github.com/Artemisiye/Kedem-World-Anvil/blob/main/notes/`;
+                let targetPath = match[1];
+                // Handle paths with directories in wikilinks (e.g., [[World Building/NPC/Goblin]])
+                if (targetPath.includes('/')) {
+                    targetPath = targetPath.replace(/ /g, '%20'); // Encode spaces in path
+                } else {
+                    targetPath = targetFileName; // Use the cleaned filename
+                }
+
+                // If the link text is different from the page name, use it. Otherwise, clean the page name for display.
+                const linkText = match[2] || match[1].split('/').pop().replace(/([A-Z])/g, ' $1').trim();
+
+                return {
+                  type: 'wikilink',
+                  raw: match[0],
+                  page: match[1],
+                  text: linkText, 
+                  href: `${githubBasePath}${targetPath.replace(/\.md$/, '')}.md` // Ensure .md is added if not present
+                };
+              }
+            },
+            renderer(token) {
+              return `<a href="${token.href}" class="wikilink" target="_blank">${token.text}</a>`;
+            }
+          }]
+        });
+
+        // Configure marked to handle single newlines as breaks
+        marked.setOptions({
+          breaks: true // This will convert single newlines to <br> tags
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
             let deityData = []; 
 
@@ -479,9 +529,9 @@
             
             const modalDeityName = document.getElementById('modal-deity-name');
             const modalDeityAliases = document.getElementById('modal-deity-aliases');
-            const modalDeityTags = document.getElementById('modal-deity-tags');
-            const modalDeityDescription = document.getElementById('modal-deity-description');
-            const modalDeityAdditional = document.getElementById('modal-deity-additional');
+            const modalDeityTags = document = document.getElementById('modal-deity-tags');
+            const modalDeityDescriptionRendered = document.getElementById('modal-deity-description-rendered'); 
+            const modalDeityAdditionalRendered = document.getElementById('modal-deity-additional-rendered'); 
             
             const deityModalEditButton = document.getElementById('deity-modal-edit-button');
             const deityModalSaveButton = document.getElementById('deity-modal-save-button');
@@ -644,7 +694,6 @@
                 
                 modalDeityName.textContent = deity.name;
                 modalDeityAliases.textContent = deity.aliases || '';
-                modalDeityDescription.textContent = deity.description || 'No description available.';
                 
                 modalDeityTags.innerHTML = '';
                 (deity.tags || []).forEach(tag => {
@@ -654,12 +703,16 @@
                     modalDeityTags.appendChild(tagSpan);
                 });
 
-                modalDeityAdditional.innerHTML = '';
+                // Render description with Markdown
+                modalDeityDescriptionRendered.innerHTML = marked.parse(deity.description || 'No description available.');
+                
+                modalDeityAdditionalRendered.innerHTML = '';
+                let additionalHtml = '';
                 if (deity.offerings) {
-                    modalDeityAdditional.innerHTML += `<p><b class="font-semibold">Offerings</b>: ${deity.offerings}</p>`;
+                    additionalHtml += `<p><b class="font-semibold">Offerings</b>: ${deity.offerings}</p>`;
                 }
                 if (deity.favors) {
-                    modalDeityAdditional.innerHTML += `<p><b class="font-semibold">Favors</b>: ${deity.favors}</p>`;
+                    additionalHtml += `<p><b class="font-semibold">Favors</b>: ${deity.favors}</p>`;
                 }
                 if (deity.startingBoon) {
                      let boonText = '';
@@ -668,11 +721,12 @@
                      } else {
                          boonText = deity.startingBoon;
                      }
-                    modalDeityAdditional.innerHTML += `<p><b class="font-semibold">Starting Boon</b>: ${boonText}</p>`;
+                    additionalHtml += `<p><b class="font-semibold">Starting Boon</b>: ${boonText}</p>`;
                 }
                 if (deity.domain) {
-                    modalDeityAdditional.innerHTML += `<p><b class="font-semibold">Domain</b>: ${deity.domain}</p>`;
+                    additionalHtml += `<p><b class="font-semibold">Domain</b>: ${deity.domain}</p>`;
                 }
+                modalDeityAdditionalRendered.innerHTML = marked.parse(additionalHtml); // Parse additional info too
                 
                 editDeityNameDisplay.textContent = deity.name; 
                 editDeityAliases.value = deity.aliases || '';
@@ -794,65 +848,361 @@
             // List of Markdown files to display in the Lore Library
             // IMPORTANT: Manually add paths to your notes here, relative to the /notes/ directory in your GitHub repo
             const loreFiles = [
-                'Mage.md',
-                'Gameplay Domains.md',
-                'Kedem Worldbuilding.md',
-                'Goblin.md',
-                'Hobgoblin.md',
-                'Titan.md',
-                'Yorick.md',
-                'Azathoth.md',
-                'Chronus.md',
-                'Gaia.md',
-                'Shamann.md',
-                'Yamm.md',
-                'Hades.md',
-                'Hypnos.md',
-                'Odin.md',
-                'Osiris.md',
-                'Ra.md',
-                'Poseidon.md',
-                'Zeus.md',
-                'Agni.md',
-                'Apollo.md',
-                'Ares.md',
-                'Artemis.md',
-                'Athena.md',
-                'Brigid.md',
-                'Dagan.md',
-                'Demeter.md',
-                'Dionysus.md',
-                'Geb.md',
-                'Hephaestus.md',
-                'Heracles.md',
-                'Hermes.md',
-                'Isis.md',
-                'Loki.md',
-                'Morrigan.md',
-                'Nemesis.md',
-                'Pan.md',
-                'Thor.md',
-                'Thoth.md',
-                'Ullr.md',
-                'Cthulhu.md',
-                'Nyarlathotep.md',
-                'Azazel.md',
-                'Ashmedai.md',
-                'Ben Shahar.md',
-                'Samael.md',
-                // Add more of your notes here as you wish them to appear in the library
-                // Example of nested path: 'World Building/Creatures/Dragon.md'
+                // Gameplay
+                'Gameplay/Ascending to Godhood.md',
+                'Gameplay/Early Game.md',
+                'Gameplay/End Game.md',
+                'Gameplay/Gameplay Domains.md',
+                'Gameplay/Mastering a Domain.md',
+                'Gameplay/Mid Game.md',
+                'Gameplay/notes.md',
+                'Gameplay/Starting Boon.md',
+                'Gameplay/The Labyrinth.md',
+
+                // Ideas
+                'Ideas/Death Delay.md',
+                'Ideas/Food Queue.md',
+                'Ideas/Human Skulls.md',
+                'Ideas/Meditation.md',
+                'Ideas/Players Name.md',
+                'Ideas/PVP.md',
+                'Ideas/Race.md',
+                'Ideas/Underworld.md',
+
+                // Introduction
+                'Introduction/Game Design Doscument Old.md',
+                'Introduction/Inspirations and Influences.md',
+                'Introduction/Introduction.md',
+
+                // Items
+                'Items/Cling.md',
+                'Items/Soulbind.md',
+                // Items/Armor
+                'Items/Armor/Armor.md',
+                'Items/Armor/Ogre Mask.md',
+                // Items/Armor/Armor Slots
+                'Items/Armor/Armor Slots/Breastplate.md',
+                'Items/Armor/Armor Slots/Gauntlets.md',
+                'Items/Armor/Armor Slots/Gloves.md',
+                'Items/Armor/Armor Slots/Greaves.md',
+                'Items/Armor/Armor Slots/Helmet.md',
+                'Items/Armor/Armor Slots/Hood.md',
+                'Items/Armor/Armor Slots/Sabatons.md',
+                'Items/Armor/Armor Slots/Shirt.md',
+                'Items/Armor/Armor Slots/Shoes.md',
+                'Items/Armor/Armor Slots/Trousers.md',
+                // Items/Blessings
+                'Items/Blessings/Bloodthirsty Vision.md',
+                'Items/Blessings/Messangers Blessing.md',
+                // Items/Crafting
+                'Items/Crafting/Crafting.md',
+                // Items/Crafting/Crafting Materials
+                'Items/Crafting/Crafting Materials/Nullstone.md',
+                // Items/Crafting/Crafting Materials/Crystals
+                'Items/Crafting/Crafting Materials/Crystals/Crystal.md',
+                'Items/Crafting/Crafting Materials/Crystals/Crystals Tier List.md',
+                // Items/Crafting/Crafting Materials/Fabrics
+                'Items/Crafting/Crafting Materials/Fabrics/Cotton.md',
+                'Items/Crafting/Crafting Materials/Fabrics/Linen.md',
+                'Items/Crafting/Crafting Materials/Fabrics/Silk.md',
+                // Items/Crafting/Crafting Materials/Metals
+                'Items/Crafting/Crafting Materials/Metals/Copper.md',
+                'Items/Crafting/Crafting Materials/Metals/Gold.md',
+                'Items/Crafting/Crafting Materials/Metals/Iron.md',
+                'Items/Crafting/Crafting Materials/Metals/Metals.md',
+                'Items/Crafting/Crafting Materials/Metals/Silver.md',
+                'Items/Crafting/Crafting Materials/Metals/Tin.md',
+                // Items/Crafting/Crafting Stations
+                'Items/Crafting/Crafting Stations/Alchemy Bath.md',
+                'Items/Crafting/Crafting Stations/Anvil.md',
+                'Items/Crafting/Crafting Stations/Loom.md',
+                'Items/Crafting/Crafting Stations/Smelter.md',
+                'Items/Crafting/Crafting Stations/Spinning Wheel.md',
+                'Items/Crafting/Crafting Stations/Tanning Rack.md',
+                'Items/Crafting/Crafting Stations/Vacuum Chamber.md',
+                'Items/Crafting/Crafting Stations/Wood Kiln.md',
+                'Items/Crafting/Crafting Stations/Wood Press.md',
+                'Items/Crafting/Crafting Stations/Workbench.md',
+                // Items/Relics
+                'Items/Relics/All-Seeing Eye.md',
+                'Items/Relics/Everlasting Aegis.md',
+                'Items/Relics/Excalibur.md',
+                'Items/Relics/Fleetfoot Hooves.md',
+                'Items/Relics/Gorgon\'s Gaze.md',
+                'Items/Relics/Legendary Relics.md',
+                'Items/Relics/Mjolnir.md',
+                'Items/Relics/Shroud Helm.md',
+                'Items/Relics/Skywalkers.md',
+                'Items/Relics/Thunderrod.md',
+                // Items/Weapons
+                'Items/Weapons/Sword.md',
+                'Items/Weapons/Weapon.md',
+
+                // Magic
+                'Magic/Mage.md',
+                'Magic/Magic Domains.md',
+                'Magic/Magic Schools.md',
+                'Magic/Ritual.md',
+                'Magic/Spell.md',
+                // Magic/Magic Schools
+                'Magic/Magic Schools/Abjuration School.md',
+                'Magic/Magic Schools/Conjuration School.md',
+                'Magic/Magic Schools/Divination School.md',
+                'Magic/Magic Schools/Enchantment School.md',
+                'Magic/Magic Schools/Evocation School.md',
+                'Magic/Magic Schools/Illusion School.md',
+                'Magic/Magic Schools/Necromancy School.md',
+                'Magic/Magic Schools/Transmutation School.md',
+                // Magic/Spells
+                'Magic/Spells/Fog Cloud.md',
+                'Magic/Spells/Haste.md',
+                'Magic/Spells/Life Toll.md',
+                'Magic/Spells/Mana Blast.md',
+                
+                // Melee Combat (assuming there might be Melee Combat.md here if it's a folder, or a file within it)
+                // If this is a folder, you'd list files like 'Melee Combat/SomeTechnique.md'
+                // For now, assuming it's a placeholder or a file named Melee Combat.md if it exists
+                'Melee Combat.md', 
+
+                // Player Mechanics
+                'Player Mechanics/Attribute.md',
+                'Player Mechanics/Health System.md',
+                'Player Mechanics/Magic System.md',
+                'Player Mechanics/Physical System.md',
+                // Player Mechanics/Damage
+                'Player Mechanics/Damage/Damage.md',
+                'Player Mechanics/Damage/Fire Damage.md',
+                'Player Mechanics/Damage/Force Damage.md',
+                'Player Mechanics/Damage/Impact Damage.md',
+                'Player Mechanics/Damage/Pierce Damage.md',
+                'Player Mechanics/Damage/Slash Damage.md',
+                // Player Mechanics/Health System
+                'Player Mechanics/Health System/Health Max.md',
+                'Player Mechanics/Health System/Health.md',
+                'Player Mechanics/Health System/Rejuvenance.md',
+                'Player Mechanics/Health System/Resilience.md',
+                'Player Mechanics/Health System/Vitality.md',
+                // Player Mechanics/Magic System (Attributes related to magic, not the Magic System overview itself)
+                'Player Mechanics/Magic System/Aether.md',
+                'Player Mechanics/Magic System/Arcana.md',
+                'Player Mechanics/Magic System/Intelligence.md',
+                'Player Mechanics/Magic System/Mana.md',
+                'Player Mechanics/Magic System/Will Power.md',
+                'Player Mechanics/Magic System/WP soft cap.md',
+                // Player Mechanics/Physical System
+                'Player Mechanics/Physical System/Endurance.md',
+                'Player Mechanics/Physical System/Energy Max.md',
+                'Player Mechanics/Physical System/Energy.md',
+                'Player Mechanics/Physical System/Stamina.md',
+                'Player Mechanics/Physical System/Strength.md',
+                'Player Mechanics/Physical System/Vigor Base.md',
+                'Player Mechanics/Physical System/Vigor.md',
+                // Player Mechanics/Player Attributes (general attributes)
+                'Player Mechanics/Player Attributes/Gigantism.md',
+                // Player Mechanics/Training
+                'Player Mechanics/Training/Training.md',
+
+                // smart-chats
+                'smart-chats/CHAT 2024-08-11 crafting system.md',
+
+                // Technical
+                'Technical/Back end.md',
+                'Technical/Development Tasks.md',
+
+                // World Building
+                'World Building/Kedem Worldbuilding.md',
+                // 'World Building/Kedem.md', // This is likely your map image, not markdown for display
+                'World Building/Lore.md',
+                // 'World Building/Map.png', // This is an image, not markdown
+                // World Building/Flora
+                'World Building/Flora/Beech.md',
+                'World Building/Flora/Birch.md',
+                'World Building/Flora/Fir.md',
+                'World Building/Flora/Oak.md',
+                'World Building/Flora/Palm.md',
+                'World Building/Flora/Pine.md',
+                'World Building/Flora/Spurce.md',
+                // World Building/Gods
+                'World Building/Gods/God.md',
+                'World Building/Gods/Overlord.md',
+                'World Building/Gods/Primordial.md',
+                // World Building/Gods/Devils
+                'World Building/Gods/Devils/Ashmedai.md',
+                'World Building/Gods/Devils/Azazel.md',
+                'World Building/Gods/Devils/Ben Shahar.md',
+                'World Building/Gods/Devils/Samael.md',
+                // 'World Building/Gods/God Portraits' (contains images/canvases, not markdown)
+                // World Building/Gods/Great Old Ones
+                'World Building/Gods/Great Old Ones/Cthulhu.md',
+                'World Building/Gods/Great Old Ones/Nyarlathotep.md',
+                // World Building/Gods/Lower Gods
+                'World Building/Gods/Lower Gods/Agni.md',
+                'World Building/Gods/Lower Gods/Apollo.md',
+                'World Building/Gods/Lower Gods/Ares.md',
+                'World Building/Gods/Lower Gods/Artemis.md',
+                'World Building/Gods/Lower Gods/Athena.md',
+                'World Building/Gods/Lower Gods/Brigid.md',
+                'World Building/Gods/Lower Gods/Dagan.md',
+                'World Building/Gods/Lower Gods/Demeter.md',
+                'World Building/Gods/Lower Gods/Dionysus.md',
+                'World Building/Gods/Lower Gods/Geb.md',
+                'World Building/Gods/Lower Gods/Hephaestus.md',
+                'World Building/Gods/Lower Gods/Heracles.md',
+                'World Building/Gods/Lower Gods/Hermes.md',
+                'World Building/Gods/Lower Gods/Isis.md',
+                'World Building/Gods/Lower Gods/Loki.md',
+                'World Building/Gods/Lower Gods/Morrigan.md',
+                'World Building/Gods/Lower Gods/Nemesis.md',
+                'World Building/Gods/Lower Gods/Pan.md',
+                'World Building/Gods/Lower Gods/Thor.md',
+                'World Building/Gods/Lower Gods/Thoth.md',
+                'World Building/Gods/Lower Gods/Ullr.md',
+                // World Building/Gods/Overlords
+                'World Building/Gods/Overlords/Hades.md',
+                'World Building/Gods/Overlords/Hypnos.md',
+                'World Building/Gods/Overlords/Odin.md',
+                'World Building/Gods/Overlords/Osiris.md',
+                'World Building/Gods/Overlords/Poseidon.md',
+                'World Building/Gods/Overlords/Ra.md',
+                'World Building/Gods/Overlords/Zeus.md',
+                // World Building/Gods/Primordial
+                'World Building/Gods/Primordial/Azathoth.md',
+                'World Building/Gods/Primordial/Chronus.md',
+                'World Building/Gods/Primordial/Gaia.md',
+                'World Building/Gods/Primordial/Shamann.md',
+                'World Building/Gods/Primordial/Yamm.md',
+                'World Building/Gods/Primordial/Yorick.md',
+                // World Building/Gods/Titans
+                'World Building/Gods/Titans/Titan.md',
+                // World Building/NPC
+                'World Building/NPC/Non Player Characters.md',
+                // World Building/NPC/Aberrations
+                'World Building/NPC/Aberrations/Mimics.md',
+                'World Building/NPC/Aberrations/Voidling.md',
+                // World Building/NPC/Animals
+                'World Building/NPC/Animals/Bats.md',
+                'World Building/NPC/Animals/Bears.md',
+                'World Building/NPC/Animals/Beetles.md',
+                'World Building/NPC/Animals/Behemoth.md',
+                'World Building/NPC/Animals/Boars.md',
+                'World Building/NPC/Animals/Camels.md',
+                'World Building/NPC/Animals/Cats.md',
+                'World Building/NPC/Animals/Chickens.md',
+                'World Building/NPC/Animals/Cows.md',
+                'World Building/NPC/Animals/Coyotes.md',
+                'World Building/NPC/Animals/Deer.md',
+                'World Building/NPC/Animals/Dogs.md',
+                'World Building/NPC/Animals/Donkeys.md',
+                'World Building/NPC/Animals/Dragonflies.md',
+                'World Building/NPC/Animals/Ducks.md',
+                'World Building/NPC/Animals/Falcons.md',
+                'World Building/NPC/Animals/Ferrets.md',
+                'World Building/NPC/Animals/Fireflies.md',
+                'World Building/NPC/Animals/Foxes.md',
+                'World Building/NPC/Animals/Frogs.md',
+                'World Building/NPC/Animals/Geese.md',
+                'World Building/NPC/Animals/Giant Crabs.md',
+                'World Building/NPC/Animals/Giant Moths.md',
+                'World Building/NPC/Animals/Giant Serpents.md',
+                'World Building/NPC/Animals/Giant Sloths.md',
+                'World Building/NPC/Animals/Glowtoads.md',
+                'World Building/NPC/Animals/Goats.md',
+                'World Building/NPC/Animals/Horses.md',
+                'World Building/NPC/Animals/Hyenas.md',
+                'World Building/NPC/Animals/Komodo Dragons.md',
+                'World Building/NPC/Animals/Komodo Hounds.md',
+                'World Building/NPC/Animals/Land Squids.md',
+                'World Building/NPC/Animals/Lions.md',
+                'World Building/NPC/Animals/Lizards.md',
+                'World Building/NPC/Animals/Llama.md',
+                'World Building/NPC/Animals/Mammoths.md',
+                'World Building/NPC/Animals/Mice.md',
+                'World Building/NPC/Animals/Monkeys.md',
+                'World Building/NPC/Animals/Mossbacks.md',
+                'World Building/NPC/Animals/Owlcats.md',
+                'World Building/NPC/Animals/Pigs.md',
+                'World Building/NPC/Animals/Porcupine.md',
+                'World Building/NPC/Animals/Rabbits.md',
+                'World Building/NPC/Animals/Raccoons.md',
+                'World Building/NPC/Animals/Ravens.md',
+                'World Building/NPC/Animals/Sabertooth.md',
+                'World Building/NPC/Animals/Sheep.md',
+                'World Building/NPC/Animals/Small Snakes.md',
+                'World Building/NPC/Animals/Squirrels.md',
+                'World Building/NPC/Animals/Terror Birds.md',
+                'World Building/NPC/Animals/Tigers.md',
+                'World Building/NPC/Animals/Toads.md',
+                'World Building/NPC/Animals/Tortoise.md',
+                'World Building/NPC/Animals/Wolverines.md',
+                'World Building/NPC/Animals/Wolves.md',
+                'World Building/NPC/Animals/Wyvernlings.md',
+                'World Building/NPC/Animals/Wyverns.md',
+                // World Building/NPC/Archbeasts
+                'World Building/NPC/Archbeasts/Archbeast.md',
+                'World Building/NPC/Archbeasts/Dragon.md',
+                'World Building/NPC/Archbeasts/Griffon.md',
+                'World Building/NPC/Archbeasts/Manticore.md',
+                'World Building/NPC/Archbeasts/Phoenix.md',
+                'World Building/NPC/Archbeasts/Unicorn.md',
+                // World Building/NPC/Bosses
+                'World Building/NPC/Bosses/Frost Giant.md',
+                // World Building/NPC/Demons
+                'World Building/NPC/Demons/Skinwalker.md',
+                // World Building/NPC/Devils
+                'World Building/NPC/Devils/Imps.md',
+                // World Building/NPC/Fey
+                'World Building/NPC/Fey/Pixies.md',
+                // World Building/NPC/Fiends
+                'World Building/NPC/Fiends/Medusa.md',
+                // World Building/NPC/Humanoids
+                'World Building/NPC/Humanoids/Goblin.md',
+                'World Building/NPC/Humanoids/Hobgoblin.md',
+                'World Building/NPC/Humanoids/Minotaur.md',
+                'World Building/NPC/Humanoids/Ogre.md',
+                'World Building/NPC/Humanoids/Orc.md',
+                'World Building/NPC/Humanoids/Troll.md',
+                // World Building/NPC/Monsters
+                'World Building/NPC/Monsters/Ophanim.md',
+                // World Building/NPC/Spirits
+                'World Building/NPC/Spirits/Djinn.md',
+                'World Building/NPC/Spirits/Phantom.md',
+                // World Building/NPC/Undead
+                'World Building/NPC/Undead/Ghoul.md',
+                // World Building/Regions
+                'World Building/Regions/Boreal Forest (Frostpine Wilds).md',
+                'World Building/Regions/Dark Sea.md',
+                'World Building/Regions/Desert (Gravewind Sands).md',
+                'World Building/Regions/Desert (Wild Arids).md',
+                'World Building/Regions/Highlands.md',
+                'World Building/Regions/Magical Forest (Elderglim Woods).md',
+                'World Building/Regions/Oasis.md',
+                'World Building/Regions/Olympus.md',
+                'World Building/Regions/Styx River.md',
+                'World Building/Regions/Tundra (The Barren Expanse).md',
+                
+                // z Misc
+                'z Misc/Lumen Command.md'
             ];
 
             function setupLoreLibrary() {
                 const loreNotesList = document.getElementById('lore-notes-list');
                 loreNotesList.innerHTML = ''; // Clear existing list
 
-                loreFiles.forEach(file => {
+                // Sort files alphabetically by their display name for better organization
+                const sortedLoreFiles = [...loreFiles].sort((a, b) => {
+                    const nameA = a.replace('.md', '').split('/').pop().replace(/([A-Z])/g, ' $1').trim();
+                    const nameB = b.replace('.md', '').split('/').pop().replace(/([A-Z])/g, ' $1').trim();
+                    return nameA.localeCompare(nameB);
+                });
+
+
+                sortedLoreFiles.forEach(file => {
                     const listItem = document.createElement('li');
                     const link = document.createElement('a');
                     link.href = `#`; // No direct hash needed, handled by JS
-                    link.textContent = file.replace('.md', '').split('/').pop().replace(/([A-Z])/g, ' $1').trim(); // Clean filename for display
+                    // Clean filename for display, handling nested paths and camelCase
+                    const displayName = file.replace('.md', '').split('/').pop().replace(/([A-Z])/g, ' $1').trim(); 
+                    link.textContent = displayName;
                     link.className = 'block px-4 py-2 rounded-lg text-slate-700 hover:bg-slate-200 transition-colors duration-200';
                     link.addEventListener('click', (e) => {
                         e.preventDefault();
@@ -865,31 +1215,6 @@
                     loreNotesList.appendChild(listItem);
                 });
             }
-
-            // MARKED.JS CUSTOM EXTENSION FOR WIKILINKS
-            marked.use({
-              extensions: [{
-                name: 'wikilink',
-                level: 'inline', // This is an inline extension
-                start(src) { return src.indexOf('[['); }, // The character to look for to start the parsing
-                tokenizer(src, tokens) {
-                  const rule = /^\[\[([^|\]]+?)(?:\|([^\]]+?))?\]\]/; // Regex to capture [[link|text]] or [[link]]
-                  const match = rule.exec(src);
-                  if (match) {
-                    return {
-                      type: 'wikilink',
-                      raw: match[0],
-                      page: match[1],
-                      text: match[2] || match[1], // Use custom text if provided, else use page name
-                      href: `https://github.com/Artemisiye/Kedem-World-Anvil/blob/main/notes/${match[1].replace(/ /g, '%20')}.md` // Construct GitHub URL
-                    };
-                  }
-                },
-                renderer(token) {
-                  return `<a href="${token.href}" class="wikilink" target="_blank">${token.text}</a>`;
-                }
-              }]
-            });
 
 
             function handleNavigation(hash) {
