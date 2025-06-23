@@ -1,0 +1,1 @@
+One of the ultimate goals in Kedem is to ascend to godhood or oppose the gods themselves. Players who successfully challenge and defeat a god, such as Ares, can ascend to take their place and become a new god. As a god, players can guide and train other players, shaping the world of Kedem according to their will.
