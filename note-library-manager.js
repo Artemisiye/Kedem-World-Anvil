@@ -73,14 +73,16 @@ export function setupNoteLibrary(loadingOverlay, noteList, noteTitle, noteConten
         sortedFilePaths.forEach(file => {
             const listItem = document.createElement('li');
             const link = document.createElement('a');
-            link.href = `#note-library:${file}`; 
+            // Link to the note-library.html with the specific note hash
+            link.href = `note-library.html#note-library:${file}`; 
             link.dataset.filepathRaw = file; 
             const displayName = file.split('/').pop().replace('.md', '').replace(/([A-Z])/g, ' $1').trim(); 
             link.textContent = displayName;
             link.className = 'block px-4 py-2 rounded-lg text-slate-700 hover:bg-slate-200 transition-colors duration-200';
             link.addEventListener('click', async (e) => {
                 e.preventDefault();
-                history.pushState(null, '', `#note-library:${file}`); 
+                // For internal SPA-like navigation within the note-library.html page
+                history.pushState(null, '', `note-library.html#note-library:${file}`); 
                 await fetchAndDisplayNote(file, loadingOverlay, noteTitle, noteContent); 
                 document.querySelectorAll('#note-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold')); 
                 const correspondingLink = document.querySelector(`#note-list a[data-filepath-raw="${file}"]`); 
@@ -176,11 +178,11 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteTitle, n
                 e.preventDefault();
                 const targetFilePath = e.target.dataset.filepath;
                 if (targetFilePath) {
-                    history.pushState(null, '', targetFilePath); 
+                    history.pushState(null, '', `note-library.html#note-library:${targetFilePath}`); // Ensure wikilinks navigate correctly on this page
                     fetchAndDisplayNote(targetFilePath.substring('#note-library:'.length), loadingOverlay, noteTitle, noteContent); 
                     
                     document.querySelectorAll('#note-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold')); 
-                    const correspondingLink = document.querySelector(`#note-list a[data-filepath-raw="${targetFilePath.substring('#note-library:'.length)}"]`); 
+                    const correspondingLink = document.querySelector(`#note-list a[data-filepath-raw="${targetFilePath}"]`); 
                     if (correspondingLink) {
                         correspondingLink.classList.add('bg-slate-300', 'font-semibold');
                     }

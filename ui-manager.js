@@ -1,22 +1,15 @@
 // ui-manager.js
 import { db, currentUserId, auth, signInUser, signOutUser } from './firebase-init.js'; 
-import { initializeDeityManager } from './deity-manager.js'; 
-import { setupNoteLibrary, fetchAndDisplayNote } from './note-library-manager.js'; 
-import { noteFiles } from './data-constants.js'; 
+import { initializeDeityManager } from './deity-manager.js'; // Only used on explorer.html
+import { setupNoteLibrary, fetchAndDisplayNote } from './note-library-manager.js'; // Only used on note-library.html
+import { noteFiles } from './data-constants.js'; // Shared, used for wikilinks and note library logic
 
-// Declare UI elements globally within the module scope for accessibility
+// Global UI elements that are always present (sidebar, loading overlay, auth controls)
 const navLinks = document.querySelectorAll('.nav-link');
-const contentSections = document.querySelectorAll('.content-section');
 const loadingOverlay = document.getElementById('loading-overlay');
+const breadcrumbsContainer = document.getElementById('breadcrumbs-container');
 
-// IMPORTANT: These elements are now retrieved globally, assuming the script is loaded AFTER their HTML definition in index.html
-// Corrected to use singular IDs as per index.html
-const noteList = document.getElementById('note-list'); 
-const noteTitle = document.getElementById('note-title'); 
-const noteContent = document.getElementById('note-content'); 
-
-
-// New UI elements for login/logout (created once and appended)
+// Auth UI elements (dynamically appended by setupUI)
 const authControlsContainer = document.createElement('div');
 authControlsContainer.className = "p-4 text-xs text-slate-400 border-t border-slate-700 flex flex-col space-y-2";
 authControlsContainer.innerHTML = `
@@ -42,9 +35,65 @@ const authStatusText = document.getElementById('auth-status-text');
 const authErrorMessage = document.getElementById('auth-error-message');
 const userIdDisplayMain = document.getElementById('user-id-display-main'); 
 
-
+/**
+ * Main setup function called on DOMContentLoaded for both pages.
+ * Detects the current page and initializes relevant functionality.
+ */
 export function setupUI() {
-    // Listen for authReady event to update UI and initialize managers
+    // Determine current page
+    const currentPage = window.location.pathname.split('/').pop(); // e.g., "explorer.html" or "note-library.html"
+
+    // Set up global navigation listeners
+    setupGlobalNav();
+
+    // Set up auth listeners
+    setupAuthControls();
+
+    // Page-specific initializations
+    if (currentPage === 'explorer.html' || currentPage === '') { // '' for root index.html when deployed as Github Pages
+        initExplorerPage();
+    } else if (currentPage === 'note-library.html') {
+        initNoteLibraryPage();
+    } else {
+        console.warn(`Unknown page: ${currentPage}. No specific UI initialization.`);
+    }
+}
+
+/**
+ * Sets up listeners for sidebar navigation links.
+ */
+function setupGlobalNav() {
+    // Highlight active link based on current page URL
+    navLinks.forEach(link => {
+        const linkHref = link.getAttribute('href');
+        if (window.location.pathname.endsWith(linkHref) || 
+            (linkHref === 'explorer.html#world' && window.location.pathname.endsWith('explorer.html') && !window.location.hash) ||
+            (linkHref === 'explorer.html#world' && window.location.pathname === '/' && !window.location.hash) // For root path on GitHub Pages
+            ) {
+            link.classList.add('active');
+        } else if (linkHref.startsWith('explorer.html#') && window.location.pathname.endsWith('explorer.html')) {
+            // For hash links on explorer.html, check current hash
+            const currentHash = window.location.hash || '#world';
+            if (linkHref === `explorer.html${currentHash}`) {
+                 link.classList.add('active');
+            }
+        }
+    });
+
+    const homeLink = document.getElementById('home-link'); 
+    if (homeLink) {
+        homeLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            // Navigate directly to the explorer page's world section
+            window.location.href = 'explorer.html#world'; 
+        });
+    }
+}
+
+/**
+ * Sets up Firebase authentication controls.
+ */
+function setupAuthControls() {
     document.addEventListener('authReady', (event) => {
         const { userId, db, auth, isEditor } = event.detail;
 
@@ -59,10 +108,13 @@ export function setupUI() {
             logoutButton.classList.add('hidden');
         }
         
-        initializeDeityManager(db, userId, isEditor);
+        // Deity manager needs Firebase instances, only initialize if on explorer page
+        const currentPage = window.location.pathname.split('/').pop();
+        if (currentPage === 'explorer.html' || currentPage === '') {
+            initializeDeityManager(db, userId, isEditor);
+        }
     });
 
-    // Handle login/logout clicks
     loginButton.addEventListener('click', async () => {
         const email = loginEmailInput.value;
         const password = loginPasswordInput.value;
@@ -93,92 +145,40 @@ export function setupUI() {
         }
         loadingOverlay.classList.add('hidden');
     });
-
-    const homeLink = document.getElementById('home-link'); 
-    if (homeLink) {
-        homeLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            window.location.hash = '#world';
-        });
-    }
-
-    navLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            window.location.hash = link.getAttribute('href');
-        });
-    });
-    
-    window.addEventListener('hashchange', () => handleNavigation(window.location.hash));
-
-    setupAttributesChart();
-    
-    // Pass the globally declared elements to setupNoteLibrary.
-    // These elements should be guaranteed to be present in the DOM when this script loads.
-    setupNoteLibrary(loadingOverlay, noteList, noteTitle, noteContent); 
-
-    // IMPORTANT: Call handleNavigation *after* all UI elements are ensured to be in the DOM
-    // This call is crucial for initial page load and note display.
-    handleNavigation(window.location.hash); 
 }
 
-function handleNavigation(hash) {
-    if (!hash) hash = '#world';
+/**
+ * Initializes functionality specific to the Kedem Explorer page.
+ */
+function initExplorerPage() {
+    console.log("Initializing Explorer Page UI...");
+    const contentSections = document.querySelectorAll('.content-section'); // Get sections specific to this page
 
-    navLinks.forEach(link => link.classList.remove('active'));
-    contentSections.forEach(section => section.classList.remove('active'));
-    
-    // Updated to use the new section name and handle default note display
-    if (hash.startsWith('#note-library')) { // Check for base #note-library as well
-        const filePathFromHash = hash.substring('#note-library:'.length);
-        
-        // Ensure the note-library section exists before trying to add classList
-        const noteLibrarySection = document.getElementById('note-library'); // Corrected ID to 'note-library'
-        if (noteLibrarySection) {
-            document.querySelector('a[href="#note-library"]').classList.add('active'); // Activate Note Library nav link
-            noteLibrarySection.classList.add('active'); // Activate Note Library section 
-        } else {
-            console.error("Note Library section element with ID 'note-library' not found. Cannot proceed with navigation.");
-            loadingOverlay.classList.add('hidden'); 
-            return; 
-        }
+    setupAttributesChart();
 
-        let fileToDisplay = filePathFromHash;
-        // Use the globally declared noteTitle, noteContent, noteList variables
-        // Add null checks for the individual note elements before using them, as a fallback safety
-        if (!noteTitle || !noteContent || !noteList) {
-            console.error("Individual Note Library display elements (note-title, note-content, note-list) not found at global scope during handleNavigation."); // Corrected IDs in error message
-            loadingOverlay.classList.add('hidden'); 
-            return;
-        }
+    // Handle initial hash and hash changes for Explorer page sections
+    window.addEventListener('hashchange', () => handleExplorerNavigation(window.location.hash));
+    handleExplorerNavigation(window.location.hash); // Initial load based on hash
 
-        if (filePathFromHash === '' || filePathFromHash === 'note-library' || !noteFiles.includes(filePathFromHash)) { 
-            if (noteFiles.length > 0) { 
-                fileToDisplay = noteFiles[0]; // Display the first note by default
-            } else {
-                console.warn("No notes available in noteFiles array to display.");
-                noteTitle.textContent = "No Notes Available"; 
-                noteContent.innerHTML = "<p>The note library is empty or could not be loaded.</p>"; 
-                loadingOverlay.classList.add('hidden');
-                return; // Exit if no files to display
+    /**
+     * Handles navigation within the Explorer page (SPA-style hash navigation).
+     * @param {string} hash - The current URL hash (e.g., "#world", "#pantheon").
+     */
+    function handleExplorerNavigation(hash) {
+        // Default to #world if no hash
+        if (!hash || !hash.startsWith('#')) hash = '#world';
+
+        // Remove active class from all nav links and content sections
+        navLinks.forEach(link => {
+            if (link.getAttribute('href').startsWith('explorer.html#')) {
+                link.classList.remove('active');
             }
-        }
+        });
+        contentSections.forEach(section => section.classList.remove('active'));
         
-        // Pass the globally declared elements to the fetch function
-        fetchAndDisplayNote(fileToDisplay, loadingOverlay, noteTitle, noteContent); 
-        
-        // Ensure noteList is not null before querying its children
-        if (noteList) { 
-            noteList.querySelectorAll('a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold')); 
-            const correspondingLink = noteList.querySelector(`a[data-filepath-raw="${fileToDisplay}"]`); 
-            if (correspondingLink) {
-                correspondingLink.classList.add('bg-slate-300', 'font-semibold');
-            }
-        }
-
-    } else {
+        // Handle standard section navigation
         const targetSectionId = hash.substring(1);
-        const targetNavLink = document.querySelector(`a[href="${hash}"]`);
+        const targetNavLink = document.querySelector(`a[href="explorer.html${hash}"]`); // Specific to explorer.html links
         const targetSection = document.getElementById(targetSectionId);
 
         if (targetNavLink) {
@@ -187,12 +187,122 @@ function handleNavigation(hash) {
         if (targetSection) {
             targetSection.classList.add('active');
         }
+
+        // Update breadcrumbs for Explorer page
+        const sectionName = targetSectionId.charAt(0).toUpperCase() + targetSectionId.slice(1).replace('-', ' ');
+        updateBreadcrumbs([{ name: 'Home', path: 'explorer.html#world' }, { name: sectionName, path: `explorer.html#${targetSectionId}` }]);
     }
 }
 
+/**
+ * Initializes functionality specific to the Note Library page.
+ */
+function initNoteLibraryPage() {
+    console.log("Initializing Note Library Page UI...");
+    
+    // Retrieve Note Library elements once they are guaranteed to be in the DOM
+    const noteListElement = document.getElementById('note-list');
+    const noteTitleElement = document.getElementById('note-title');
+    const noteContentElement = document.getElementById('note-content');
+    const noteLibrarySection = document.getElementById('note-library'); // The main section ID on this page
+
+    if (!noteListElement || !noteTitleElement || !noteContentElement || !noteLibrarySection) {
+        console.error("Note Library UI elements not found. Cannot initialize Note Library.");
+        loadingOverlay.classList.add('hidden');
+        return;
+    }
+    
+    // Pass the actual DOM elements to setupNoteLibrary
+    setupNoteLibrary(loadingOverlay, noteListElement, noteTitleElement, noteContentElement); 
+
+    // Handle initial hash and hash changes for Note Library page (for specific notes)
+    window.addEventListener('hashchange', () => handleNoteLibraryNavigation(window.location.hash));
+    handleNoteLibraryNavigation(window.location.hash); // Initial load based on hash
+
+
+    /**
+     * Handles navigation within the Note Library page (deep links to specific notes).
+     * @param {string} hash - The current URL hash (e.g., "#note-library:path/to/note.md").
+     */
+    function handleNoteLibraryNavigation(hash) {
+        // Default to the first note if no specific note is specified in the hash
+        let filePathFromHash = '';
+        if (hash.startsWith('#note-library:')) {
+            filePathFromHash = hash.substring('#note-library:'.length);
+        }
+
+        let fileToDisplay = filePathFromHash;
+        if (filePathFromHash === '' || !noteFiles.includes(filePathFromHash)) { 
+            if (noteFiles.length > 0) { 
+                fileToDisplay = noteFiles[0]; 
+            } else {
+                console.warn("No notes available in noteFiles array to display.");
+                noteTitleElement.textContent = "No Notes Available"; 
+                noteContentElement.innerHTML = "<p>The note library is empty or could not be loaded.</p>"; 
+                loadingOverlay.classList.add('hidden');
+                return;
+            }
+        }
+        
+        fetchAndDisplayNote(fileToDisplay, loadingOverlay, noteTitleElement, noteContentElement); 
+        
+        // Highlight the active note in the sidebar list
+        if (noteListElement) { 
+            noteListElement.querySelectorAll('a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold')); 
+            const correspondingLink = noteListElement.querySelector(`a[data-filepath-raw="${fileToDisplay}"]`); 
+            if (correspondingLink) {
+                correspondingLink.classList.add('bg-slate-300', 'font-semibold');
+            }
+        }
+
+        // Update breadcrumbs for Note Library page
+        const pathParts = fileToDisplay.replace('.md', '').split('/');
+        const breadcrumbs = [{ name: 'Home', path: 'explorer.html#world' }, { name: 'Note Library', path: 'note-library.html' }];
+        pathParts.forEach((part, index) => {
+            const currentPath = pathParts.slice(0, index + 1).join('/');
+            const displayName = part.replace(/([A-Z])/g, ' $1').trim(); // Clean up camelCase or similar
+            breadcrumbs.push({ name: displayName, path: `note-library.html#note-library:${currentPath}.md` });
+        });
+        updateBreadcrumbs(breadcrumbs);
+    }
+}
+
+/**
+ * Dynamically updates the breadcrumbs display.
+ * @param {Array<Object>} crumbs - An array of objects like { name: 'Display Name', path: 'url_or_hash' }.
+ */
+function updateBreadcrumbs(crumbs) {
+    if (!breadcrumbsContainer) {
+        console.warn("Breadcrumbs container not found.");
+        return;
+    }
+    breadcrumbsContainer.innerHTML = ''; // Clear existing breadcrumbs
+    crumbs.forEach((crumb, index) => {
+        const span = document.createElement('span');
+        if (index > 0) {
+            span.innerHTML += ' &gt; '; // Separator
+        }
+        if (index === crumbs.length - 1) {
+            // Last crumb is the current page/item, so it's not a link
+            span.innerHTML += `<span class="text-slate-700 font-semibold">${crumb.name}</span>`;
+        } else {
+            span.innerHTML += `<a href="${crumb.path}" class="text-amber-600 hover:underline">${crumb.name}</a>`;
+        }
+        breadcrumbsContainer.appendChild(span);
+    });
+}
+
+
+// Function for the attributes chart (only on explorer page)
 function setupAttributesChart() {
-    const ctx = document.getElementById('attributesChart').getContext('2d');
-    new Chart(ctx, {
+    const ctx = document.getElementById('attributesChart');
+    if (!ctx) { // Check if chart canvas exists on this page
+        console.warn("Attributes chart canvas not found on this page.");
+        return;
+    }
+    const chartContext = ctx.getContext('2d');
+
+    new Chart(chartContext, {
         type: 'bar',
         data: {
             labels: ['Health', 'Resilience', 'Endurance (Max Energy)', 'Stamina (Energy Regen)'],
@@ -259,3 +369,6 @@ function setupAttributesChart() {
         }
     });
 }
+
+// Initial UI setup on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', setupUI);

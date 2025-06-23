@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kedem: Note Library</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Marked.js for Markdown parsing (MUST be loaded before markdown-parser.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- Fonts and general styles -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+            color: #334155; /* slate-700 */
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #e2e8f0; } /* slate-200 */
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; } /* slate-400 */
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; } /* slate-500 */
+        .nav-link.active {
+            background-color: #fbbf24; /* amber-400 */
+            color: #1e293b; /* slate-800 */
+            font-weight: 600;
+        }
+        .content-section {
+            display: none; /* Sections are managed by JS in SPA, but here, only 'note-library' will be active */
+        }
+        .content-section.active {
+            display: block;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            font-size: 1.5rem;
+            color: #1e293b;
+        }
+        /* Style for rendered markdown content */
+        .markdown-content h1 { font-size: 2.25rem; font-weight: 700; margin-bottom: 1rem; }
+        .markdown-content h2 { font-size: 1.875rem; font-weight: 600; margin-bottom: 0.75rem; }
+        .markdown-content h3 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .markdown-content h4 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .markdown-content p { margin-bottom: 0.75rem; line-height: 1.6; }
+        .markdown-content ul, .markdown-content ol { list-style-position: inside; margin-bottom: 0.75rem; padding-left: 1.5rem; }
+        .markdown-content ul li { list-style-type: disc; }
+        .markdown-content ol li { list-style-type: decimal; }
+        .markdown-content b, .markdown-content strong { font-weight: 700; }
+        .markdown-content em, .markdown-content i { font-style: italic; }
+        .markdown-content hr { border-top: 1px solid #e2e8f0; margin: 1.5rem 0; }
+        .markdown-content pre { background-color: #f1f5f9; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
+        .markdown-content code { background-color: #f1f5f9; padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-family: monospace; }
+        .markdown-content blockquote { border-left: 4px solid #94a3b8; padding-left: 1rem; margin: 1rem 0; color: #64748b; }
+        .markdown-content table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+        .markdown-content th, .markdown-content td { border: 1px solid #cbd5e1; padding: 0.75rem; text-align: left; }
+        .markdown-content th { background-color: #e2e8f0; }
+        /* Style for wikilinks */
+        .markdown-content a.wikilink {
+            color: #2563eb; /* blue-600 */
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .markdown-content a.wikilink:hover {
+            text-decoration: underline;
+        }
+        /* Specific styling for tags/metadata lines within markdown-content */
+        .markdown-content .metadata-line {
+            font-size: 0.875rem; /* text-sm */
+            color: #64748b; /* slate-500 */
+            font-style: italic;
+            margin-bottom: 0.25rem;
+            line-height: 1.2;
+        }
+        .markdown-content .tag-chip {
+            display: inline-block;
+            background-color: #e2e8f0; /* slate-200 */
+            color: #334155; /* slate-800 */
+            font-size: 0.75rem; /* text-xs */
+            font-weight: 500; /* font-medium */
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px; /* rounded-full */
+            margin-right: 0.4rem;
+            margin-bottom: 0.4rem;
+            white-space: nowrap;
+        }
+        .markdown-content .property-line {
+            font-size: 0.875rem; /* text-sm */
+            margin-bottom: 0.25rem;
+        }
+        .markdown-content .property-line strong {
+            font-weight: 600;
+            color: #1e293b; /* slate-800 */
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        Loading data...
+    </div>
+
+    <div class="flex h-screen bg-slate-50">
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-slate-800 text-slate-100 flex flex-col fixed h-full">
+            <div class="h-16 flex items-center justify-center border-b border-slate-700">
+                <a href="explorer.html#world" id="home-link" class="text-2xl font-bold text-amber-400 hover:text-amber-300 transition-colors duration-200">Kedem Anvil</a>
+            </div>
+            <nav class="flex-1 px-4 py-4 space-y-2">
+                <a href="explorer.html#world" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">The World</a>
+                <a href="explorer.html#pantheon" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">The Pantheon</a>
+                <a href="explorer.html#bestiary" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Bestiary</a>
+                <a href="explorer.html#gameplay" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Gameplay & Mechanics</a>
+                <a href="note-library.html" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700 active">Note Library</a>
+            </nav>
+            <!-- Auth controls are now dynamically added by ui-manager.js, removing static User ID display -->
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 ml-64 p-6 sm:p-8 lg:p-12 overflow-y-auto">
+            <!-- Breadcrumbs will be injected here -->
+            <nav id="breadcrumbs-container" class="text-sm text-slate-500 mb-4">
+                <!-- Breadcrumbs will be dynamically inserted here by JavaScript -->
+            </nav>
+
+            <!-- Note Library Section (now the main content for this page) -->
+            <section id="note-library" class="content-section active"> <!-- Marked as active by default for this page -->
+                <h2 class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">Note Library</h2>
+                <div class="bg-white p-6 rounded-xl shadow-sm mb-6">
+                    <p class="text-base leading-relaxed">This section allows you to explore various Markdown notes directly from the Kedem-World-Anvil repository. Select a note from the list to view its raw content rendered here. Note that adding new files to this list requires manual updates to the application code.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-1 bg-white p-4 rounded-xl shadow-sm overflow-y-auto max-h-[60vh]">
+                        <h3 class="text-xl font-bold text-teal-700 mb-3">Available Notes</h3>
+                        <ul id="note-list" class="space-y-2">
+                            <!-- List of notes will be injected here -->
+                        </ul>
+                    </div>
+                    <div class="md:col-span-2 bg-white p-6 rounded-xl shadow-sm overflow-y-auto max-h-[60vh]">
+                        <h3 class="text-xl font-bold text-teal-700 mb-3" id="note-title">Select a Note</h3>
+                        <div id="note-content" class="markdown-content text-base text-slate-700 leading-relaxed">
+                            <p>Click on a note from the left panel to display its content.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- No Deity Detail Modal on this page, as it's specific to the Pantheon Explorer -->
+    
+    <!-- Firebase and other core modules loaded at the end of the body for DOM readiness -->
+    <script type="module">
+        // Export initialDeityDataFallback (might not be needed on this page, but kept for consistency if other modules rely on it)
+        // and noteFiles from data-constants.js to the global window object.
+        // This is necessary because the marked.js extensions (configured in markdown-parser.js, which is a regular script),
+        // need global access to noteFiles for wikilink resolution.
+        import { initialDeityDataFallback, noteFiles } from './data-constants.js'; 
+        window.initialDeityDataFallback = initialDeityDataFallback;
+        window.noteFiles = noteFiles; 
+    </script>
+    <script type="module" src="./firebase-init.js"></script>
+    <script type="module" src="./markdown-parser.js"></script>
+    <script type="module" src="./note-library-manager.js"></script>
+    <script type="module" src="./ui-manager.js"></script>
+</body>
+</html>

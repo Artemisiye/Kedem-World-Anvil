@@ -21,7 +21,7 @@ marked.use({
         const githubBasePath = `https://github.com/Artemisiye/Kedem-World-Anvil/blob/main/notes/`;
         
         // Access window.noteFiles (exported from data-constants.js and attached to window in index.html)
-        const resolvedFilePath = window.noteFiles.find(f => 
+        const resolvedFilePath = window.noteFiles.find(f => // Renamed from window.loreFiles
             f.toLowerCase() === `${targetWikiName.toLowerCase()}.md` || 
             f.toLowerCase().endsWith(`/${targetWikiName.toLowerCase()}.md`) ||
             f.toLowerCase().split('/').pop().replace('.md', '') === targetWikiName.toLowerCase() // Handles "Will Power" -> "Will Power.md"
@@ -29,8 +29,8 @@ marked.use({
         
         let href;
         if (resolvedFilePath) {
-            // If found in our list, it's an internal SPA link
-            href = `#/notes-library:${resolvedFilePath}`; // Use the new section hash
+            // If found in our list, it's an internal SPA link to the note-library.html page
+            href = `note-library.html#note-library:${resolvedFilePath}`; // IMPORTANT: Update target to the new note-library page
             return {
                 type: 'wikilink',
                 raw: match[0],

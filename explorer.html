@@ -3,41 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kedem: Interactive World Anvil</title>
+    <title>Kedem: The Explorer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Marked.js for Markdown parsing (MUST be loaded before markdown-parser.js) -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     
-    <!-- Import JavaScript Modules -->
-    <script type="module" src="./firebase-init.js"></script>
-    <script type="module">
-        // Export initialDeityDataFallback and noteFiles from data-constants.js to the global window object.
-        // This is necessary because the marked.js extensions (configured in markdown-parser.js, which is a regular script),
-        // need global access to noteFiles for wikilink resolution.
-        import { initialDeityDataFallback, noteFiles } from './data-constants.js'; // Changed loreFiles to noteFiles
-        window.initialDeityDataFallback = initialDeityDataFallback;
-        window.noteFiles = noteFiles; // Changed loreFiles to noteFiles
-    </script>
-    <script type="module" src="./markdown-parser.js"></script> <!-- Your custom marked.js setup -->
-    <script type="module" src="./deity-manager.js"></script>
-    <script type="module" src="./note-library-manager.js"></script> <!-- Renamed file import -->
-    <script type="module" src="./ui-manager.js"></script>
-
+    <!-- Fonts and general styles -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Chosen Palette: Warm Neutrals (Slate, Amber, Teal) -->
-    <!-- Application Structure Plan: A responsive single-page application with a fixed sidebar for primary navigation and a dynamic main content area. This structure allows users to easily switch between core topics (World, Pantheon, Bestiary, Gameplay, Note Library) without losing context. The "Note Library" section will dynamically fetch and display Markdown content from specific URLs. The key interaction is the "Pantheon Explorer," a filterable and searchable card grid, designed to make the large, complex hierarchy of deities manageable and easy to explore. This non-linear, thematic structure is more user-friendly for a GDD than a simple linear document, facilitating quick lookups and discovery of relationships between entities. -->
-    <!-- Visualization & Content Choices: 
-        - Pantheon: Goal: Organize & Compare. Method: Interactive card grid with filters for rank/influence and a search bar. When a card is clicked, a modal displays detailed information about the deity, now with editable fields for in-session modification and *permanent saving to Firestore*. This handles the large dataset effectively and provides drill-down functionality. Library: Vanilla JS + Tailwind, Chart.js, Firestore.
-        - Note Library: Goal: Inform & Explore Textual Content. Method: Navigation list of Markdown files, dynamically fetching and rendering their content when clicked. Enhanced with custom Marked.js extension for [[wikilinks]] and improved line break handling. Library: Vanilla JS + marked.js + Tailwind.
-        - Gameplay Progression: Goal: Show Change. Method: Clickable horizontal timeline. This visualizes the game's flow. Library: HTML/CSS + JS for interaction.
-        - Player Attributes: Goal: Inform & Explain Relationships. Method: A dynamic HTML/CSS diagram instead of a simple chart, showing how core attributes like Vitality and Resilience contribute to Effective Health. This is more explanatory than a basic bar chart. Library: HTML/CSS + JS.
-        - Factions (Humans, Goblins, etc.): Goal: Compare. Method: Side-by-side content cards to highlight differences. Library: Tailwind Grid.
-        - Justification: These choices prioritize interactivity and comprehension, transforming the static GDD into an exploratory tool.
-    -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -155,61 +131,10 @@
             font-size: 1.5rem;
             color: #1e293b;
         }
-        /* Style for rendered markdown content */
-        .markdown-content h1 { font-size: 2.25rem; font-weight: 700; margin-bottom: 1rem; }
-        .markdown-content h2 { font-size: 1.875rem; font-weight: 600; margin-bottom: 0.75rem; }
-        .markdown-content h3 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
-        .markdown-content h4 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; }
+        /* Minimal markdown content styles for this page, as detailed notes are in Note Library */
         .markdown-content p { margin-bottom: 0.75rem; line-height: 1.6; }
-        .markdown-content ul, .markdown-content ol { list-style-position: inside; margin-bottom: 0.75rem; padding-left: 1.5rem; }
-        .markdown-content ul li { list-style-type: disc; }
-        .markdown-content ol li { list-style-type: decimal; }
         .markdown-content b, .markdown-content strong { font-weight: 700; }
         .markdown-content em, .markdown-content i { font-style: italic; }
-        .markdown-content hr { border-top: 1px solid #e2e8f0; margin: 1.5rem 0; }
-        .markdown-content pre { background-color: #f1f5f9; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
-        .markdown-content code { background-color: #f1f5f9; padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-family: monospace; }
-        .markdown-content blockquote { border-left: 4px solid #94a3b8; padding-left: 1rem; margin: 1rem 0; color: #64748b; }
-        .markdown-content table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
-        .markdown-content th, .markdown-content td { border: 1px solid #cbd5e1; padding: 0.75rem; text-align: left; }
-        .markdown-content th { background-color: #e2e8f0; }
-        /* Style for wikilinks */
-        .markdown-content a.wikilink {
-            color: #2563eb; /* blue-600 */
-            text-decoration: none;
-            font-weight: 500;
-        }
-        .markdown-content a.wikilink:hover {
-            text-decoration: underline;
-        }
-        /* Specific styling for tags/metadata lines within markdown-content */
-        .markdown-content .metadata-line {
-            font-size: 0.875rem; /* text-sm */
-            color: #64748b; /* slate-500 */
-            font-style: italic;
-            margin-bottom: 0.25rem;
-            line-height: 1.2;
-        }
-        .markdown-content .tag-chip {
-            display: inline-block;
-            background-color: #e2e8f0; /* slate-200 */
-            color: #334155; /* slate-800 */
-            font-size: 0.75rem; /* text-xs */
-            font-weight: 500; /* font-medium */
-            padding: 0.2rem 0.6rem;
-            border-radius: 9999px; /* rounded-full */
-            margin-right: 0.4rem;
-            margin-bottom: 0.4rem;
-            white-space: nowrap;
-        }
-        .markdown-content .property-line {
-            font-size: 0.875rem; /* text-sm */
-            margin-bottom: 0.25rem;
-        }
-        .markdown-content .property-line strong {
-            font-weight: 600;
-            color: #1e293b; /* slate-800 */
-        }
     </style>
 </head>
 <body class="antialiased">
@@ -223,23 +148,27 @@
         <!-- Sidebar Navigation -->
         <aside class="w-64 bg-slate-800 text-slate-100 flex flex-col fixed h-full">
             <div class="h-16 flex items-center justify-center border-b border-slate-700">
-                <a href="#world" id="home-link" class="text-2xl font-bold text-amber-400 hover:text-amber-300 transition-colors duration-200">Kedem Anvil</a>
+                <a href="explorer.html#world" id="home-link" class="text-2xl font-bold text-amber-400 hover:text-amber-300 transition-colors duration-200">Kedem Anvil</a>
             </div>
             <nav class="flex-1 px-4 py-4 space-y-2">
-                <a href="#world" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">The World</a>
-                <a href="#pantheon" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">The Pantheon</a>
-                <a href="#bestiary" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Bestiary</a>
-                <a href="#gameplay" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Gameplay & Mechanics</a>
-                <a href="#note-library" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Note Library</a>
+                <a href="explorer.html#world" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">The World</a>
+                <a href="explorer.html#pantheon" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">The Pantheon</a>
+                <a href="explorer.html#bestiary" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Bestiary</a>
+                <a href="explorer.html#gameplay" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Gameplay & Mechanics</a>
+                <a href="note-library.html" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Note Library</a>
             </nav>
             <!-- Auth controls are now dynamically added by ui-manager.js, removing static User ID display -->
         </aside>
 
         <!-- Main Content -->
         <main class="flex-1 ml-64 p-6 sm:p-8 lg:p-12 overflow-y-auto">
-            
+            <!-- Breadcrumbs will be injected here -->
+            <nav id="breadcrumbs-container" class="text-sm text-slate-500 mb-4">
+                <!-- Breadcrumbs will be dynamically inserted here by JavaScript -->
+            </nav>
+
             <!-- World Section -->
-            <section id="world" class="content-section">
+            <section id="world" class="content-section active"> <!-- Set 'world' as active by default -->
                 <h2 class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">The World of Kedem</h2>
                 <div class="space-y-8">
                     <div class="bg-white p-6 rounded-xl shadow-sm">
@@ -374,28 +303,6 @@
                 </div>
             </section>
 
-            <!-- Note Library Section -->
-            <section id="note-library" class="content-section"> <!-- Renamed section ID -->
-                <h2 class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">Note Library</h2> <!-- Updated section title -->
-                <div class="bg-white p-6 rounded-xl shadow-sm mb-6">
-                    <p class="text-base leading-relaxed">This section allows you to explore various Markdown notes directly from the Kedem-World-Anvil repository. Select a note from the list to view its raw content rendered here. Note that adding new files to this list requires manual updates to the application code.</p>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="md:col-span-1 bg-white p-4 rounded-xl shadow-sm overflow-y-auto max-h-[60vh]">
-                        <h3 class="text-xl font-bold text-teal-700 mb-3">Available Notes</h3>
-                        <ul id="note-list" class="space-y-2"> <!-- Renamed ID -->
-                            <!-- List of notes will be injected here -->
-                        </ul>
-                    </div>
-                    <div class="md:col-span-2 bg-white p-6 rounded-xl shadow-sm overflow-y-auto max-h-[60vh]">
-                        <h3 class="text-xl font-bold text-teal-700 mb-3" id="note-title">Select a Note</h3> <!-- Renamed ID -->
-                        <div id="note-content" class="markdown-content text-base text-slate-700 leading-relaxed"> <!-- Renamed ID -->
-                            <p>Click on a note from the left panel to display its content.</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
         </main>
     </div>
 
@@ -447,19 +354,16 @@
         </div>
     </div>
 
+    <!-- Firebase and other core modules loaded at the end of the body for DOM readiness -->
     <script type="module">
-        // Export initialDeityDataFallback and noteFiles from data-constants.js to the global window object.
-        // This is necessary because the marked.js extensions (configured in markdown-parser.js, which is a regular script),
-        // need global access to noteFiles for wikilink resolution.
-        import { initialDeityDataFallback, noteFiles } from './data-constants.js'; // Renamed import
+        // Export initialDeityDataFallback and noteFiles to the global window object for marked.js
+        import { initialDeityDataFallback, noteFiles } from './data-constants.js'; 
         window.initialDeityDataFallback = initialDeityDataFallback;
-        window.noteFiles = noteFiles; // Renamed global variable
-        
-        // Import and immediately call setupUI to start the application
-        import { setupUI } from './ui-manager.js';
-        document.addEventListener('DOMContentLoaded', () => {
-            setupUI();
-        });
+        window.noteFiles = noteFiles; 
     </script>
+    <script type="module" src="./firebase-init.js"></script>
+    <script type="module" src="./markdown-parser.js"></script>
+    <script type="module" src="./deity-manager.js"></script>
+    <script type="module" src="./ui-manager.js"></script>
 </body>
 </html>
