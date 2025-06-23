@@ -8,8 +8,7 @@ import { noteFiles } from './data-constants.js';
 const navLinks = document.querySelectorAll('.nav-link');
 const contentSections = document.querySelectorAll('.content-section');
 const loadingOverlay = document.getElementById('loading-overlay');
-// Removed: noteTitle, noteContent, noteList declarations from here
-// These will now be retrieved directly within handleNavigation for specific use
+// noteTitle, noteContent, noteList declarations are now handled locally within setupUI and handleNavigation
 
 // New UI elements for login/logout (created once and appended)
 const authControlsContainer = document.createElement('div');
@@ -111,8 +110,14 @@ export function setupUI() {
     handleNavigation(window.location.hash); 
 
     setupAttributesChart();
-    // Call setupNoteLibrary, it will now retrieve its own elements
-    setupNoteLibrary(loadingOverlay); 
+    
+    // Retrieve Note Library elements here, ensuring they are in the DOM before passing
+    const noteListElement = document.getElementById('notes-list');
+    const noteTitleElement = document.getElementById('note-title');
+    const noteContentElement = document.getElementById('note-content');
+    
+    // Pass the actual DOM elements to setupNoteLibrary
+    setupNoteLibrary(loadingOverlay, noteListElement, noteTitleElement, noteContentElement); 
 }
 
 function handleNavigation(hash) {
@@ -129,17 +134,17 @@ function handleNavigation(hash) {
         
         let fileToDisplay = filePathFromHash;
         // Get the note display elements here, as they are guaranteed to exist now (after DOMContentLoaded)
-        const currentNoteTitle = document.getElementById('note-title'); // Corrected ID reference
-        const currentNoteContent = document.getElementById('note-content'); // Corrected ID reference
-        const currentNoteList = document.getElementById('notes-list'); // Corrected ID reference
+        const currentNoteTitle = document.getElementById('note-title'); 
+        const currentNoteContent = document.getElementById('note-content'); 
+        const currentNoteList = document.getElementById('notes-list'); 
 
         if (filePathFromHash === '' || filePathFromHash === 'note-library' || !noteFiles.includes(filePathFromHash)) { 
             if (noteFiles.length > 0) { 
                 fileToDisplay = noteFiles[0]; // Display the first note by default
             } else {
                 console.warn("No notes available in noteFiles array to display.");
-                if (currentNoteTitle) currentNoteTitle.textContent = "No Notes Available"; // Use corrected variable
-                if (currentNoteContent) currentNoteContent.innerHTML = "<p>The note library is empty or could not be loaded.</p>"; // Use corrected variable
+                if (currentNoteTitle) currentNoteTitle.textContent = "No Notes Available"; 
+                if (currentNoteContent) currentNoteContent.innerHTML = "<p>The note library is empty or could not be loaded.</p>"; 
                 loadingOverlay.classList.add('hidden');
                 return; // Exit if no files to display
             }

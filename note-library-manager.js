@@ -1,19 +1,12 @@
 // note-library-manager.js
 
-import { noteFiles } from './data-constants.js'; // Import noteFiles from constants
-import { markedInstance } from './markdown-parser.js'; // Import the configured marked instance
+import { noteFiles } from './data-constants.js'; 
+import { markedInstance } from './markdown-parser.js'; 
 
-export function setupNoteLibrary(loadingOverlay) {
-    // Moved document.getElementById calls here to ensure DOM is ready
-    const noteList = document.getElementById('notes-list'); // Corrected ID to 'notes-list'
-    const noteTitle = document.getElementById('note-title'); // Corrected ID to 'note-title'
-    const noteContent = document.getElementById('note-content'); // Corrected ID to 'note-content'
-    
-    // Check if elements exist before manipulating, though they should now
-    if (!noteList || !noteTitle || !noteContent) {
-        console.error("Note Library UI elements not found in DOM. Cannot initialize library.");
-        return; 
-    }
+// setupNoteLibrary now accepts the DOM elements as arguments
+export function setupNoteLibrary(loadingOverlay, noteList, noteTitle, noteContent) { 
+    // The checks for null elements are now handled by the caller (ui-manager.js)
+    // and removed from here as they are guaranteed to be passed.
 
     noteList.innerHTML = ''; 
 
@@ -81,16 +74,16 @@ export function setupNoteLibrary(loadingOverlay) {
         sortedFilePaths.forEach(file => {
             const listItem = document.createElement('li');
             const link = document.createElement('a');
-            link.href = `#note-library:${file}`; // Updated to #note-library
+            link.href = `#note-library:${file}`; 
             link.dataset.filepathRaw = file; 
             const displayName = file.split('/').pop().replace('.md', '').replace(/([A-Z])/g, ' $1').trim(); 
             link.textContent = displayName;
             link.className = 'block px-4 py-2 rounded-lg text-slate-700 hover:bg-slate-200 transition-colors duration-200';
             link.addEventListener('click', async (e) => {
                 e.preventDefault();
-                history.pushState(null, '', `#note-library:${file}`); // Updated to #note-library
+                history.pushState(null, '', `#note-library:${file}`); 
                 await fetchAndDisplayNote(file, loadingOverlay, noteTitle, noteContent); 
-                document.querySelectorAll('#notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold')); // Corrected ID to 'notes-list'
+                document.querySelectorAll('#notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold')); 
                 link.classList.add('bg-slate-300', 'font-semibold');
             });
             listItem.appendChild(link);
@@ -182,10 +175,10 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteTitle, n
                 const targetFilePath = e.target.dataset.filepath;
                 if (targetFilePath) {
                     history.pushState(null, '', targetFilePath); 
-                    fetchAndDisplayNote(targetFilePath.substring('#note-library:'.length), loadingOverlay, noteTitle, noteContent); // Updated to #note-library
+                    fetchAndDisplayNote(targetFilePath.substring('#note-library:'.length), loadingOverlay, noteTitle, noteContent); 
                     
-                    document.querySelectorAll('#notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold')); // Corrected ID to 'notes-list'
-                    const correspondingLink = document.querySelector(`#notes-list a[data-filepath-raw="${targetFilePath.substring('#note-library:'.length)}"]`); // Corrected ID to 'notes-list', updated to #note-library
+                    document.querySelectorAll('#notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold')); 
+                    const correspondingLink = document.querySelector(`#notes-list a[data-filepath-raw="${targetFilePath.substring('#note-library:'.length)}"]`); 
                     if (correspondingLink) {
                         correspondingLink.classList.add('bg-slate-300', 'font-semibold');
                     }
