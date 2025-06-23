@@ -760,6 +760,7 @@
             // Function to fetch and display Markdown content
             async function fetchAndDisplayMarkdown(filePath) {
                 loadingOverlay.classList.remove('hidden');
+                // Construct the raw GitHub URL for the markdown file
                 const rawGitHubUrl = `https://raw.githubusercontent.com/Artemisiye/Kedem-World-Anvil/main/notes/${filePath}`;
                 const loreNoteTitle = document.getElementById('lore-note-title');
                 const loreNoteContent = document.getElementById('lore-note-content');
@@ -767,10 +768,10 @@
                 try {
                     const response = await fetch(rawGitHubUrl);
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        throw new Error(`HTTP error! status: ${response.status} - Could not access raw file. Ensure it's public and path is correct.`);
                     }
                     const markdownText = await response.text();
-                    loreNoteTitle.textContent = filePath.replace('.md', ''); // Use filename as title
+                    loreNoteTitle.textContent = filePath.replace('.md', '').split('/').pop().replace(/([A-Z])/g, ' $1').trim(); // Use filename as title, clean it
                     loreNoteContent.innerHTML = marked.parse(markdownText); // Parse Markdown to HTML
                 } catch (error) {
                     console.error('Error fetching Markdown file:', error);
@@ -779,6 +780,41 @@
                 } finally {
                     loadingOverlay.classList.add('hidden');
                 }
+            }
+
+            // List of Markdown files to display in the Lore Library
+            // IMPORTANT: Manually add paths to your notes here, relative to the /notes/ directory in your GitHub repo
+            const loreFiles = [
+                'Mage.md',
+                'Gameplay Domains.md',
+                'Kedem Worldbuilding.md',
+                'Goblin.md',
+                'Hobgoblin.md',
+                'Titan.md',
+                // Add more of your notes here as you wish them to appear in the library
+                // Example of nested path: 'World Building/Creatures/Dragon.md'
+            ];
+
+            function setupLoreLibrary() {
+                const loreNotesList = document.getElementById('lore-notes-list');
+                loreNotesList.innerHTML = ''; // Clear existing list
+
+                loreFiles.forEach(file => {
+                    const listItem = document.createElement('li');
+                    const link = document.createElement('a');
+                    link.href = `#`; // No direct hash needed, handled by JS
+                    link.textContent = file.replace('.md', '').split('/').pop().replace(/([A-Z])/g, ' $1').trim(); // Clean filename for display
+                    link.className = 'block px-4 py-2 rounded-lg text-slate-700 hover:bg-slate-200 transition-colors duration-200';
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        fetchAndDisplayMarkdown(file);
+                        // Optional: Highlight active link
+                        document.querySelectorAll('#lore-notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
+                        link.classList.add('bg-slate-300', 'font-semibold');
+                    });
+                    listItem.appendChild(link);
+                    loreNotesList.appendChild(listItem);
+                });
             }
 
 
@@ -940,6 +976,7 @@
             window.addEventListener('hashchange', () => handleNavigation(window.location.hash));
             handleNavigation(window.location.hash);
             setupAttributesChart();
+            setupLoreLibrary(); // Call the new function to set up the Lore Library
 
         });
     </script>
