@@ -36,11 +36,13 @@ export function setupNoteLibrary(loadingOverlay, noteList, noteTitleElement, not
 
     function createList(data) {
         const ul = document.createElement('ul');
-        ul.className = 'ml-0 space-y-1'; 
+        ul.className = 'space-y-1'; 
 
         // Add a class to the root UL for easier traversal in UI manager
-        if (noteList === ul) { 
+        if (ul.parentElement === noteList) { 
             ul.classList.add('root-ul');
+        } else {
+             ul.classList.add('folder-list-indent'); 
         }
 
         // Sort folders and files alphabetically
@@ -56,13 +58,14 @@ export function setupNoteLibrary(loadingOverlay, noteList, noteTitleElement, not
             li.className = 'folder-item';
             
             const folderToggle = document.createElement('div');
-            folderToggle.className = 'flex items-center cursor-pointer px-2 py-1 rounded-lg text-slate-800 hover:bg-slate-200 transition-colors duration-200 font-semibold';
+            // Applying Tailwind classes directly here
+            folderToggle.className = 'note-list-folder-toggle flex items-center cursor-pointer px-2 py-1 rounded-lg text-slate-100 font-semibold transition-colors duration-200 hover:bg-slate-700'; 
             folderToggle.innerHTML = `<span class="toggle-icon mr-2">▶</span> ${folderName}`;
             li.appendChild(folderToggle);
 
             // Add visual indent for sub-folders
             const subList = createList(data.folders[folderName]);
-            subList.classList.add('hidden', 'ml-4', 'border-l', 'border-slate-300', 'pl-2'); 
+            subList.classList.add('hidden'); 
             li.appendChild(subList);
 
             folderToggle.addEventListener('click', () => {
@@ -79,7 +82,8 @@ export function setupNoteLibrary(loadingOverlay, noteList, noteTitleElement, not
             link.dataset.filepathRaw = file; 
             const displayName = file.split('/').pop().replace('.md', '').replace(/([A-Z])/g, ' $1').trim(); 
             link.textContent = displayName;
-            link.className = 'block px-4 py-2 rounded-lg text-slate-700 hover:bg-slate-200 transition-colors duration-200';
+            // Applying Tailwind classes directly here
+            link.className = 'note-list-item-link block px-4 py-2 rounded-lg text-slate-100 transition-colors duration-200 hover:bg-slate-700'; 
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 history.pushState(null, '', `note-library.html#note-library:${file}`); 

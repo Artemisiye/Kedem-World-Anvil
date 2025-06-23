@@ -97,6 +97,46 @@
             font-size: 1.5rem;
             color: #1e293b;
         }
+        /* Styling for the note list items to fit the sidebar */
+        .note-list-item-link {
+            display: block;
+            padding: 0.5rem 1rem; /* px-4 py-2 */
+            border-radius: 0.5rem; /* rounded-lg */
+            color: #f1f5f9; /* slate-100 */
+            transition-colors duration-200; /* Applied directly as utility classes */
+            text-decoration: none;
+        }
+        .note-list-item-link:hover {
+            background-color: #334155; /* slate-700 */
+        }
+        .note-list-item-link.active-note {
+            background-color: #fbbf24; /* amber-400 */
+            color: #1e293b; /* slate-800 */
+            font-weight: 600;
+        }
+        .note-list-folder-toggle {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 0.5rem 1rem; /* px-4 py-2 */
+            border-radius: 0.5rem; /* rounded-lg */
+            color: #f1f5f9; /* slate-100 */
+            transition-colors duration-200; /* Applied directly as utility classes */
+            font-weight: 600;
+            user-select: none; /* Prevent text selection on toggle */
+        }
+        .note-list-folder-toggle:hover {
+             background-color: #334155; /* slate-700 */
+        }
+        .toggle-icon {
+            margin-right: 0.5rem; /* mr-2 */
+            font-size: 0.875rem; /* text-sm */
+        }
+        .folder-list-indent {
+            margin-left: 1rem; /* ml-4 */
+            border-left: 1px solid #475569; /* slate-600 border */
+            padding-left: 0.5rem; /* pl-2 */
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -112,15 +152,16 @@
             <div class="h-16 flex items-center justify-center border-b border-slate-700">
                 <a href="explorer.html#world" id="home-link" class="text-2xl font-bold text-amber-400 hover:text-amber-300 transition-colors duration-200">Kedem Anvil</a>
             </div>
-            <nav class="flex-1 px-4 py-4 space-y-2">
+            <nav class="flex-none px-4 py-4 space-y-2"> <!-- flex-none to not take up vertical space -->
                 <!-- Simplified navigation for Note Library page -->
                 <a href="explorer.html#world" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">The World (Explorer)</a>
-                <a href="note-library.html" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700 active">Note Library</a>
+                <!-- "Note Library" link is removed as we are already on this page and the home link is sufficient for navigation -->
             </nav>
             <!-- Note-specific sidebar content below main navigation -->
-            <div class="flex-1 p-4 overflow-y-auto border-t border-slate-700">
+            <!-- Adjusted flex-auto to fill remaining vertical space and scroll -->
+            <div class="flex-auto p-4 overflow-y-auto border-t border-slate-700"> 
                 <h3 class="text-xl font-bold text-teal-300 mb-3">Notes</h3>
-                <ul id="note-list" class="space-y-2">
+                <ul id="note-list" class="space-y-1"> <!-- space-y-1 for tighter list items -->
                     <!-- Note list will be injected here by JavaScript -->
                 </ul>
             </div>
@@ -137,7 +178,7 @@
             <div class="grid grid-cols-3 gap-6 h-full">
                 <!-- Main Note Display Area (2/3 width) -->
                 <div class="col-span-2 flex flex-col h-full">
-                    <h2 id="note-display-title" class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">Select a Note</h2>
+                    <h2 id="note-display-title" class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">Select a Note</h2> 
                     <div id="note-content" class="markdown-content bg-white p-6 rounded-xl shadow-sm text-base text-slate-700 leading-relaxed flex-1 overflow-y-auto">
                         <p>Select a note from the left panel to display its content.</p>
                     </div>
@@ -165,8 +206,6 @@
         // Export noteFiles to the global window object for marked.js
         import { noteFiles } from './data-constants.js'; 
         window.noteFiles = noteFiles; 
-        // No initialDeityDataFallback needed on this page unless other modules strictly require it globally
-        // window.initialDeityDataFallback = initialDeityDataFallback; 
     </script>
     <script type="module" src="./firebase-init.js"></script>
     <script type="module" src="./markdown-parser.js"></script>

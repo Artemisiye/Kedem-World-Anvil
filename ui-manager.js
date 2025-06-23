@@ -9,14 +9,6 @@ const navLinks = document.querySelectorAll('.nav-link');
 const loadingOverlay = document.getElementById('loading-overlay');
 const breadcrumbsContainer = document.getElementById('breadcrumbs-container');
 
-// IMPORTANT: These elements are now retrieved globally, assuming the script is loaded AFTER their HTML definition in index.html
-// Corrected to use singular IDs as per index.html
-const globalNoteList = document.getElementById('note-list'); 
-const globalNoteTitle = document.getElementById('note-title'); 
-const globalNoteContent = document.getElementById('note-content'); 
-const globalNoteDisplayMainTitle = document.getElementById('note-display-title'); // The H2 title of the Note Library page
-
-
 // Auth UI elements (dynamically appended by setupUI)
 const authControlsContainer = document.createElement('div');
 authControlsContainer.className = "p-4 text-xs text-slate-400 border-t border-slate-700 flex flex-col space-y-2";
@@ -40,7 +32,6 @@ const loginPasswordInput = document.getElementById('login-password');
 const loginButton = document.getElementById('login-button');
 const logoutButton = document.getElementById('logout-button');
 const authStatusText = document.getElementById('auth-status-text');
-const authErrorMessage = document.getElementById('auth-error-message');
 const userIdDisplayMain = document.getElementById('user-id-display-main'); 
 
 /**
@@ -84,6 +75,7 @@ function setupGlobalNav(currentPage) {
                 link.classList.add('active');
             }
         } else if (currentPage === 'note-library.html') {
+            // Only highlight the "Note Library" link itself if it exists and we're on this page
             if (linkHref === 'note-library.html') {
                 link.classList.add('active');
             }
@@ -100,14 +92,16 @@ function setupGlobalNav(currentPage) {
 
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
-            // Prevent default behavior for hash links managed by internal SPA logic
-            if (link.getAttribute('href').startsWith('explorer.html#') && currentPage === 'explorer.html') {
-                e.preventDefault();
+            const currentPageName = window.location.pathname.split('/').pop();
+
+            // Handle internal SPA navigation for explorer.html or note-library.html
+            // If the clicked link's href starts with a hash and we are on the correct page.
+            if (link.getAttribute('href').startsWith('#') && 
+                (currentPageName === 'explorer.html' || currentPageName === 'note-library.html')) {
+                e.preventDefault(); // Prevent full page reload
                 window.location.hash = link.getAttribute('href').split('#')[1];
-            } else if (link.getAttribute('href').startsWith('note-library.html#note-library:') && currentPage === 'note-library.html') {
-                 e.preventDefault();
-                 window.location.hash = link.getAttribute('href').split('#')[1];
-            }
+            } 
+            // For full page reloads (e.g., clicking from explorer to note-library.html), let default behavior happen
         });
     });
 }
@@ -139,6 +133,7 @@ function setupAuthControls(currentPage) {
     loginButton.addEventListener('click', async () => {
         const email = loginEmailInput.value;
         const password = loginPasswordInput.value;
+        const authErrorMessage = document.getElementById('auth-error-message'); // Get here, as it might not exist on all pages
         authErrorMessage.classList.add('hidden'); 
         if (email && password) {
             loadingOverlay.classList.remove('hidden');
@@ -158,6 +153,7 @@ function setupAuthControls(currentPage) {
         loadingOverlay.classList.remove('hidden');
         const result = await signOutUser();
         if (!result.success) {
+            const authErrorMessage = document.getElementById('auth-error-message'); // Get here
             authErrorMessage.textContent = `Error logging out: ${result.error}`;
             authErrorMessage.classList.remove('hidden');
         } else {
@@ -172,7 +168,7 @@ function setupAuthControls(currentPage) {
  * Initializes functionality specific to the Kedem Explorer page (explorer.html).
  */
 function initExplorerPage() {
-    console.log("Initializing Explorer Page UI...");
+    console.log("Initializing Explorer Page UI.");
     const contentSections = document.querySelectorAll('.content-section'); 
 
     setupAttributesChart();
@@ -208,18 +204,22 @@ function initExplorerPage() {
  * Initializes functionality specific to the Note Library page (note-library.html).
  */
 function initNoteLibraryPage() {
-    console.log("Initializing Note Library Page UI...");
+    console.log("Initializing Note Library Page UI.");
     
-    // Retrieve Note Library elements once they are guaranteed to be in the DOM
-    // These are already declared globally at the top of this file
-    if (!globalNoteList || !globalNoteTitle || !globalNoteContent || !globalNoteDisplayMainTitle) {
+    // Retrieve Note Library elements within this function scope for robustness
+    const noteListElement = document.getElementById('note-list');
+    const noteTitleElement = document.getElementById('note-title'); 
+    const noteContentElement = document.getElementById('note-content');
+    const noteDisplayMainTitle = document.getElementById('note-display-title'); 
+
+    if (!noteListElement || !noteTitleElement || !noteContentElement || !noteDisplayMainTitle) {
         console.error("Note Library UI elements (note-list, note-title, note-content, note-display-title) not found. Cannot initialize Note Library.");
         loadingOverlay.classList.add('hidden');
         return;
     }
     
-    // Pass the actual DOM elements to setupNoteLibrary
-    setupNoteLibrary(loadingOverlay, globalNoteList, globalNoteTitle, globalNoteContent, globalNoteDisplayMainTitle); 
+    // Pass the retrieved DOM elements to setupNoteLibrary
+    setupNoteLibrary(loadingOverlay, noteListElement, noteTitleElement, noteContentElement, noteDisplayMainTitle); 
 
     window.addEventListener('hashchange', () => handleNoteLibraryNavigation(window.location.hash));
     handleNoteLibraryNavigation(window.location.hash); 
@@ -241,28 +241,27 @@ function initNoteLibraryPage() {
                 fileToDisplay = noteFiles[0]; 
             } else {
                 console.warn("No notes available in noteFiles array to display.");
-                globalNoteDisplayMainTitle.textContent = "No Notes Available"; 
-                globalNoteTitle.style.display = 'block'; // Ensure it's visible if content area is empty
-                globalNoteTitle.textContent = "Select a note from the left panel to display its content."; 
-                globalNoteContent.innerHTML = ""; // Clear content if no notes to display
+                noteDisplayMainTitle.textContent = "No Notes Available"; 
+                noteTitleElement.style.display = 'none'; 
+                noteContentElement.innerHTML = "<p>The note library is empty or could not be loaded.</p>"; 
                 loadingOverlay.classList.add('hidden');
                 return;
             }
         }
         
-        fetchAndDisplayNote(fileToDisplay, loadingOverlay, globalNoteTitle, globalNoteContent, globalNoteDisplayMainTitle); 
+        fetchAndDisplayNote(fileToDisplay, loadingOverlay, noteTitleElement, noteContentElement, noteDisplayMainTitle); 
         
-        if (globalNoteList) { 
-            globalNoteList.querySelectorAll('a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold')); 
-            const correspondingLink = globalNoteList.querySelector(`a[data-filepath-raw="${fileToDisplay}"]`); 
+        if (noteListElement) { 
+            noteListElement.querySelectorAll('.note-list-item-link').forEach(el => el.classList.remove('active-note')); 
+            const correspondingLink = noteListElement.querySelector(`a[data-filepath-raw="${fileToDisplay}"]`); 
             if (correspondingLink) {
-                correspondingLink.classList.add('bg-slate-300', 'font-semibold');
+                correspondingLink.classList.add('active-note'); 
                 let parentUl = correspondingLink.closest('ul');
                 while (parentUl && !parentUl.classList.contains('root-ul')) { 
                     if (parentUl.classList.contains('hidden')) {
                         parentUl.classList.remove('hidden');
                         const folderToggle = parentUl.previousElementSibling;
-                        if (folderToggle && folderToggle.classList.contains('flex') && folderToggle.querySelector('.toggle-icon')) {
+                        if (folderToggle && folderToggle.classList.contains('note-list-folder-toggle')) { 
                              folderToggle.querySelector('.toggle-icon').textContent = '▼';
                         }
                     }
