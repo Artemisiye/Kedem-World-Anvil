@@ -1,7 +1,7 @@
 // ui-manager.js
 import { db, currentUserId, auth, signInUser, signOutUser } from './firebase-init.js'; 
-import { initializeDeityManager } from './deity-manager.js'; // Only used on explorer.html
-import { setupNoteLibrary, fetchAndDisplayNote } from './note-library-manager.js'; // Only used on note-library.html
+import { initializeDeityManager } from './deity-manager.js'; // Only imported/used if on explorer.html
+import { setupNoteLibrary, fetchAndDisplayNote } from './note-library-manager.js'; // Only imported/used if on note-library.html
 import { noteFiles } from './data-constants.js'; // Shared, used for wikilinks and note library logic
 
 // Global UI elements that are always present (sidebar, loading overlay, auth controls)
@@ -40,14 +40,15 @@ const userIdDisplayMain = document.getElementById('user-id-display-main');
  * Detects the current page and initializes relevant functionality.
  */
 export function setupUI() {
-    // Determine current page
-    const currentPage = window.location.pathname.split('/').pop(); // e.g., "explorer.html" or "note-library.html"
+    // Determine current page based on filename
+    const currentPage = window.location.pathname.split('/').pop(); 
+    console.log(`Current page: ${currentPage}`); // Debugging
 
     // Set up global navigation listeners
-    setupGlobalNav();
+    setupGlobalNav(currentPage);
 
     // Set up auth listeners
-    setupAuthControls();
+    setupAuthControls(currentPage); // Pass currentPage to auth controls for conditional deity manager init
 
     // Page-specific initializations
     if (currentPage === 'explorer.html' || currentPage === '') { // '' for root index.html when deployed as Github Pages
@@ -60,22 +61,25 @@ export function setupUI() {
 }
 
 /**
- * Sets up listeners for sidebar navigation links.
+ * Sets up listeners for sidebar navigation links and highlights the active page.
+ * @param {string} currentPage - The filename of the current HTML page.
  */
-function setupGlobalNav() {
-    // Highlight active link based on current page URL
+function setupGlobalNav(currentPage) {
     navLinks.forEach(link => {
+        link.classList.remove('active'); // Clear all active states first
         const linkHref = link.getAttribute('href');
-        if (window.location.pathname.endsWith(linkHref) || 
-            (linkHref === 'explorer.html#world' && window.location.pathname.endsWith('explorer.html') && !window.location.hash) ||
-            (linkHref === 'explorer.html#world' && window.location.pathname === '/' && !window.location.hash) // For root path on GitHub Pages
-            ) {
-            link.classList.add('active');
-        } else if (linkHref.startsWith('explorer.html#') && window.location.pathname.endsWith('explorer.html')) {
-            // For hash links on explorer.html, check current hash
+
+        // Logic to highlight the current main page/section
+        if (currentPage === 'explorer.html' || currentPage === '') {
+            // If on explorer.html, check its hash links
             const currentHash = window.location.hash || '#world';
-            if (linkHref === `explorer.html${currentHash}`) {
-                 link.classList.add('active');
+            if (linkHref === `explorer.html${currentHash}` || (linkHref === 'explorer.html#world' && currentHash === '#world')) {
+                link.classList.add('active');
+            }
+        } else if (currentPage === 'note-library.html') {
+            // If on note-library.html, check if the link is to note-library.html
+            if (linkHref === 'note-library.html') {
+                link.classList.add('active');
             }
         }
     });
@@ -88,12 +92,29 @@ function setupGlobalNav() {
             window.location.href = 'explorer.html#world'; 
         });
     }
+
+    // Add general click listeners for direct page navigation from sidebar
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            // Prevent default behavior for hash links managed by internal SPA logic
+            if (link.getAttribute('href').startsWith('explorer.html#') && currentPage === 'explorer.html') {
+                e.preventDefault();
+                window.location.hash = link.getAttribute('href').split('#')[1];
+            } else if (link.getAttribute('href').startsWith('note-library.html#note-library:') && currentPage === 'note-library.html') {
+                 // For internal wikilinks within note-library.html that use the sidebar list
+                 e.preventDefault();
+                 window.location.hash = link.getAttribute('href').split('#')[1];
+            }
+            // For full page reloads, let default behavior happen
+        });
+    });
 }
 
 /**
- * Sets up Firebase authentication controls.
+ * Sets up Firebase authentication controls and conditionally initializes managers.
+ * @param {string} currentPage - The filename of the current HTML page.
  */
-function setupAuthControls() {
+function setupAuthControls(currentPage) {
     document.addEventListener('authReady', (event) => {
         const { userId, db, auth, isEditor } = event.detail;
 
@@ -109,10 +130,10 @@ function setupAuthControls() {
         }
         
         // Deity manager needs Firebase instances, only initialize if on explorer page
-        const currentPage = window.location.pathname.split('/').pop();
         if (currentPage === 'explorer.html' || currentPage === '') {
             initializeDeityManager(db, userId, isEditor);
         }
+        // Note Library does NOT need Firebase for now, so no call here.
     });
 
     loginButton.addEventListener('click', async () => {
@@ -148,7 +169,7 @@ function setupAuthControls() {
 }
 
 /**
- * Initializes functionality specific to the Kedem Explorer page.
+ * Initializes functionality specific to the Kedem Explorer page (explorer.html).
  */
 function initExplorerPage() {
     console.log("Initializing Explorer Page UI...");
@@ -168,60 +189,56 @@ function initExplorerPage() {
         // Default to #world if no hash
         if (!hash || !hash.startsWith('#')) hash = '#world';
 
-        // Remove active class from all nav links and content sections
-        navLinks.forEach(link => {
-            if (link.getAttribute('href').startsWith('explorer.html#')) {
-                link.classList.remove('active');
-            }
-        });
+        // Remove active class from content sections
         contentSections.forEach(section => section.classList.remove('active'));
         
         // Handle standard section navigation
         const targetSectionId = hash.substring(1);
-        const targetNavLink = document.querySelector(`a[href="explorer.html${hash}"]`); // Specific to explorer.html links
         const targetSection = document.getElementById(targetSectionId);
 
-        if (targetNavLink) {
-            targetNavLink.classList.add('active');
-        }
         if (targetSection) {
             targetSection.classList.add('active');
+        } else {
+            // Fallback if section not found (e.g., malformed hash)
+            document.getElementById('world').classList.add('active'); // Default to world
+            window.location.hash = '#world';
         }
 
         // Update breadcrumbs for Explorer page
-        const sectionName = targetSectionId.charAt(0).toUpperCase() + targetSectionId.slice(1).replace('-', ' ');
+        const sectionName = (targetSectionId.charAt(0).toUpperCase() + targetSectionId.slice(1)).replace('-', ' ');
         updateBreadcrumbs([{ name: 'Home', path: 'explorer.html#world' }, { name: sectionName, path: `explorer.html#${targetSectionId}` }]);
     }
 }
 
 /**
- * Initializes functionality specific to the Note Library page.
+ * Initializes functionality specific to the Note Library page (note-library.html).
  */
 function initNoteLibraryPage() {
     console.log("Initializing Note Library Page UI...");
     
     // Retrieve Note Library elements once they are guaranteed to be in the DOM
     const noteListElement = document.getElementById('note-list');
-    const noteTitleElement = document.getElementById('note-title');
+    const noteTitleElement = document.getElementById('note-title'); // This is the H3 that becomes the note title
     const noteContentElement = document.getElementById('note-content');
-    const noteLibrarySection = document.getElementById('note-library'); // The main section ID on this page
+    const noteDisplayMainTitle = document.getElementById('note-display-title'); // The H2 that shows "Note Library" or note title
 
-    if (!noteListElement || !noteTitleElement || !noteContentElement || !noteLibrarySection) {
-        console.error("Note Library UI elements not found. Cannot initialize Note Library.");
+    if (!noteListElement || !noteTitleElement || !noteContentElement || !noteDisplayMainTitle) {
+        console.error("Note Library UI elements (note-list, note-title, note-content, note-display-title) not found. Cannot initialize Note Library.");
         loadingOverlay.classList.add('hidden');
         return;
     }
     
     // Pass the actual DOM elements to setupNoteLibrary
-    setupNoteLibrary(loadingOverlay, noteListElement, noteTitleElement, noteContentElement); 
+    setupNoteLibrary(loadingOverlay, noteListElement, noteTitleElement, noteContentElement, noteDisplayMainTitle); 
 
     // Handle initial hash and hash changes for Note Library page (for specific notes)
+    // Note: The click listener for actual links within the sidebar is in note-library-manager.js
     window.addEventListener('hashchange', () => handleNoteLibraryNavigation(window.location.hash));
     handleNoteLibraryNavigation(window.location.hash); // Initial load based on hash
 
-
     /**
      * Handles navigation within the Note Library page (deep links to specific notes).
+     * This is an SPA-like navigation for notes, not a full page reload.
      * @param {string} hash - The current URL hash (e.g., "#note-library:path/to/note.md").
      */
     function handleNoteLibraryNavigation(hash) {
@@ -234,17 +251,19 @@ function initNoteLibraryPage() {
         let fileToDisplay = filePathFromHash;
         if (filePathFromHash === '' || !noteFiles.includes(filePathFromHash)) { 
             if (noteFiles.length > 0) { 
-                fileToDisplay = noteFiles[0]; 
+                fileToDisplay = noteFiles[0]; // Display the first note by default
             } else {
                 console.warn("No notes available in noteFiles array to display.");
-                noteTitleElement.textContent = "No Notes Available"; 
+                noteDisplayMainTitle.textContent = "No Notes Available"; // Update main title
+                noteTitleElement.textContent = ""; // Clear sub-title
                 noteContentElement.innerHTML = "<p>The note library is empty or could not be loaded.</p>"; 
                 loadingOverlay.classList.add('hidden');
                 return;
             }
         }
         
-        fetchAndDisplayNote(fileToDisplay, loadingOverlay, noteTitleElement, noteContentElement); 
+        // Fetch and display the note content
+        fetchAndDisplayNote(fileToDisplay, loadingOverlay, noteTitleElement, noteContentElement, noteDisplayMainTitle); 
         
         // Highlight the active note in the sidebar list
         if (noteListElement) { 
@@ -252,6 +271,18 @@ function initNoteLibraryPage() {
             const correspondingLink = noteListElement.querySelector(`a[data-filepath-raw="${fileToDisplay}"]`); 
             if (correspondingLink) {
                 correspondingLink.classList.add('bg-slate-300', 'font-semibold');
+                // Ensure the parent folder is expanded if the link is nested
+                let parentUl = correspondingLink.closest('ul');
+                while (parentUl && !parentUl.classList.contains('root-ul')) { // Assuming root UL has a class 'root-ul' or similar
+                    if (parentUl.classList.contains('hidden')) {
+                        parentUl.classList.remove('hidden');
+                        const folderToggle = parentUl.previousElementSibling;
+                        if (folderToggle && folderToggle.classList.contains('flex') && folderToggle.querySelector('.toggle-icon')) {
+                             folderToggle.querySelector('.toggle-icon').textContent = '▼';
+                        }
+                    }
+                    parentUl = parentUl.parentElement.closest('ul');
+                }
             }
         }
 
@@ -259,9 +290,14 @@ function initNoteLibraryPage() {
         const pathParts = fileToDisplay.replace('.md', '').split('/');
         const breadcrumbs = [{ name: 'Home', path: 'explorer.html#world' }, { name: 'Note Library', path: 'note-library.html' }];
         pathParts.forEach((part, index) => {
-            const currentPath = pathParts.slice(0, index + 1).join('/');
+            const currentPathSegment = pathParts.slice(0, index + 1).join('/');
             const displayName = part.replace(/([A-Z])/g, ' $1').trim(); // Clean up camelCase or similar
-            breadcrumbs.push({ name: displayName, path: `note-library.html#note-library:${currentPath}.md` });
+            // For the last part, make it plain text, not a link
+            if (index === pathParts.length - 1) {
+                breadcrumbs.push({ name: displayName }); // No path for the last item, it's the current page
+            } else {
+                breadcrumbs.push({ name: displayName, path: `note-library.html#note-library:${currentPathSegment}.md` });
+            }
         });
         updateBreadcrumbs(breadcrumbs);
     }
@@ -282,8 +318,7 @@ function updateBreadcrumbs(crumbs) {
         if (index > 0) {
             span.innerHTML += ' &gt; '; // Separator
         }
-        if (index === crumbs.length - 1) {
-            // Last crumb is the current page/item, so it's not a link
+        if (index === crumbs.length - 1 || !crumb.path) { // Last crumb or no path means it's current
             span.innerHTML += `<span class="text-slate-700 font-semibold">${crumb.name}</span>`;
         } else {
             span.innerHTML += `<a href="${crumb.path}" class="text-amber-600 hover:underline">${crumb.name}</a>`;
@@ -370,5 +405,5 @@ function setupAttributesChart() {
     });
 }
 
-// Initial UI setup on DOMContentLoaded
+// Initial UI setup on DOMContentLoaded (this call initiates everything)
 document.addEventListener('DOMContentLoaded', setupUI);
