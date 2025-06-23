@@ -26,7 +26,6 @@ authControlsContainer.innerHTML = `
     <button id="logout-button" class="w-full bg-slate-600 text-white py-2 rounded-md hover:bg-slate-700 transition-colors duration-200 text-sm font-semibold hidden">Logout</button>
 `;
 // Append auth controls directly here. This runs as the script loads, before DOMContentLoaded.
-// The sidebar element must exist in the HTML for this to work.
 const sidebar = document.querySelector('aside');
 if (sidebar) {
     sidebar.appendChild(authControlsContainer);
@@ -62,8 +61,6 @@ export function setupUI() {
         initExplorerPage();
     } else if (currentPage === 'note-library.html') {
         // Ensure DOM is fully ready for Note Library specific elements
-        // This setTimeout is a defensive measure for intermittent issues,
-        // as DOMContentLoaded should generally be sufficient.
         setTimeout(() => {
             initNoteLibraryPage();
         }, 0); // Execute as soon as possible after current call stack
@@ -84,19 +81,15 @@ function setupGlobalNav(currentPage) {
 
     // Highlight the appropriate navigation link/text based on the current page
     if (currentPage === 'explorer.html' || currentPage === '') {
-        // For explorer.html, initial highlight is done in handleExplorerNavigation based on hash
-        // Here, just make sure the 'Note Library' static text is NOT highlighted if present
         const noteLibraryStaticText = document.querySelector('.sidebar-active-text');
         if (noteLibraryStaticText) {
             noteLibraryStaticText.classList.remove('active');
         }
     } else if (currentPage === 'note-library.html') {
-        // For note-library.html, the 'Note Library' is a static text with specific styling
         const noteLibraryStaticText = document.querySelector('.sidebar-active-text');
         if (noteLibraryStaticText) {
             noteLibraryStaticText.classList.add('active');
         }
-        // Ensure no other .nav-link is active on this page if it's meant to be static
         navLinks.forEach(link => link.classList.remove('active'));
     }
 
@@ -131,7 +124,6 @@ function setupAuthControls(currentPage) {
     document.addEventListener('authReady', (event) => {
         const { userId, db, auth, isEditor } = event.detail;
 
-        // Ensure elements exist before trying to update them
         if (userIdDisplayMain) userIdDisplayMain.textContent = userId || 'Not available';
         if (userId) {
             if (authStatusText) authStatusText.textContent = isEditor ? 'Editor (Logged In)' : 'Logged In (Viewer)';
@@ -252,24 +244,30 @@ function initNoteLibraryPage() {
 
     // Retrieve Note Library elements within this function scope for robustness
     const noteListElement = document.getElementById('note-list');
-    const noteTitleElement = document.getElementById('note-title');
     const noteContentElement = document.getElementById('note-content');
     const noteDisplayMainTitle = document.getElementById('note-display-title');
 
     // Crucial check: Ensure all elements are found before proceeding
-    if (!noteListElement || !noteTitleElement || !noteContentElement || !noteDisplayMainTitle) {
-        console.error("Note Library UI elements (note-list, note-title, note-content, note-display-title) not found. Cannot initialize Note Library.");
+    if (!noteListElement || !noteContentElement || !noteDisplayMainTitle) {
+        console.error("Note Library UI elements (note-list, note-content, note-display-title) not found. Cannot initialize Note Library.");
         if (loadingOverlay) loadingOverlay.classList.add('hidden');
         // Display a user-facing error message in the main content area
         const mainContentArea = document.querySelector('main');
         if (mainContentArea) {
+            // Updated error message to reflect correctly missing elements
+            const missingElements = [
+                !noteListElement ? 'note-list' : '',
+                !noteContentElement ? 'note-content' : '',
+                !noteDisplayMainTitle ? 'note-display-title' : ''
+            ].filter(Boolean).join(', ');
+
             mainContentArea.innerHTML = `
                 <h2 class="text-4xl font-bold text-red-600 mb-6 border-b-4 border-red-400 pb-2">Error Loading Note Library</h2>
                 <div class="bg-white p-6 rounded-xl shadow-sm text-base text-slate-700 leading-relaxed">
                     <p>There was a problem loading the Note Library. Some required HTML elements were not found.</p>
                     <p>Please ensure all IDs in note-library.html match those expected by the JavaScript.</p>
                     <p>If the issue persists, try clearing your browser cache and refreshing the page.</p>
-                    <p class="mt-2 text-sm text-slate-500">Missing elements: ${[!noteListElement ? 'note-list' : '', !noteTitleElement ? 'note-title' : '', !noteContentElement ? 'note-content' : '', !noteDisplayMainTitle ? 'note-display-title' : ''].filter(Boolean).join(', ')}</p>
+                    <p class="mt-2 text-sm text-slate-500">Missing elements: <code>${missingElements}</code></p>
                 </div>
             `;
         }
@@ -277,10 +275,11 @@ function initNoteLibraryPage() {
     }
 
     // Pass the retrieved DOM elements to setupNoteLibrary
-    setupNoteLibrary(loadingOverlay, noteListElement, noteTitleElement, noteContentElement, noteDisplayMainTitle);
+    setupNoteLibrary(loadingOverlay, noteListElement, noteContentElement, noteDisplayMainTitle);
 
     window.addEventListener('hashchange', () => handleNoteLibraryNavigation(window.location.hash));
-    handleNoteLibraryNavigation(window.location.hash); // Initial load based on hash
+    // Initial load based on hash or default to first note/welcome
+    handleNoteLibraryNavigation(window.location.hash);
 
     /**
      * Handles navigation within the Note Library page (deep links to specific notes).
@@ -300,14 +299,13 @@ function initNoteLibraryPage() {
             } else {
                 console.warn("No notes available in noteFiles array to display.");
                 if (noteDisplayMainTitle) noteDisplayMainTitle.textContent = "No Notes Available";
-                if (noteTitleElement) noteTitleElement.style.display = 'none';
                 if (noteContentElement) noteContentElement.innerHTML = "<p>The note library is empty or could not be loaded.</p>";
                 if (loadingOverlay) loadingOverlay.classList.add('hidden');
                 return;
             }
         }
 
-        fetchAndDisplayNote(fileToDisplay, loadingOverlay, noteTitleElement, noteContentElement, noteDisplayMainTitle);
+        fetchAndDisplayNote(fileToDisplay, loadingOverlay, noteContentElement, noteDisplayMainTitle);
 
         if (noteListElement) {
             noteListElement.querySelectorAll('.note-list-item-link').forEach(el => el.classList.remove('active-note'));

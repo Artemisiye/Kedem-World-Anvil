@@ -3,7 +3,7 @@
 import { noteFiles } from './data-constants.js';
 import { markedInstance } from './markdown-parser.js';
 
-export function setupNoteLibrary(loadingOverlay, noteList, noteTitleElement, noteContentElement, noteDisplayMainTitle) {
+export function setupNoteLibrary(loadingOverlay, noteList, noteContentElement, noteDisplayMainTitle) {
     noteList.innerHTML = '';
 
     // Function to build the folder structure recursively
@@ -104,16 +104,14 @@ export function setupNoteLibrary(loadingOverlay, noteList, noteTitleElement, not
         });
     }
 
-    // Set initial display to the main title
-    noteDisplayMainTitle.textContent = 'Note Library';
-    noteTitleElement.textContent = 'Welcome!'; // Assuming this is still used for initial welcome
-    noteContentElement.innerHTML = '<p class="text-slate-500">Select a note from the left panel to view its content.</p>';
+    // Set initial display for the main title and content 
+    if (noteDisplayMainTitle) noteDisplayMainTitle.textContent = 'Note Library';
+    if (noteContentElement) noteContentElement.innerHTML = '<p class="text-slate-500">Select a note from the left panel to view its content.</p>';
 }
 
-export async function fetchAndDisplayNote(filePath, loadingOverlay, noteTitleElement, noteContentElement, noteDisplayMainTitle) {
-    loadingOverlay.classList.remove('hidden');
-    // noteTitleElement.textContent = ''; // Clear previous title - this is handled by noteDisplayMainTitle now.
-    noteContentElement.innerHTML = ''; // Clear previous content
+export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentElement, noteDisplayMainTitle) {
+    if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+    if (noteContentElement) noteContentElement.innerHTML = ''; // Clear previous content
 
     const githubBasePath = `https://raw.githubusercontent.com/Artemisiye/Kedem-World-Anvil/main/notes/`;
     const fullUrl = `${githubBasePath}${filePath}`;
@@ -127,12 +125,13 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteTitleEle
         let markdownText = await response.text();
 
         // Set raw file path on an element, if needed (e.g., for edit buttons)
-        if (noteTitleElement) noteTitleElement.dataset.rawfilepath = filePath;
+        // No longer using noteTitleElement for this; if you need it, attach to noteContentElement or noteDisplayMainTitle
+        // if (noteTitleElement) noteTitleElement.dataset.rawfilepath = filePath;
 
         // Set the main display title
         if (noteDisplayMainTitle) noteDisplayMainTitle.textContent = displayName;
-        // The smaller noteTitleElement is now effectively unused or hidden for fetched notes
-        if (noteTitleElement) noteTitleElement.style.display = 'none';
+        // The smaller noteTitleElement is now completely removed from the UI and JS logic
+        // if (noteTitleElement) noteTitleElement.style.display = 'none';
 
 
         // --- PRE-PROCESSING FOR OBSIDIAN METADATA AND CUSTOM PROPERTIES ---
@@ -203,24 +202,23 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteTitleEle
         if (noteContentElement) noteContentElement.innerHTML = markedInstance.parse(markdownText);
 
         // Add event listeners to internal wikilinks for SPA-like navigation
-        noteContentElement.querySelectorAll('a.internal-wikilink').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const targetFilePath = e.target.dataset.filepath;
-                if (targetFilePath) {
-                    history.pushState(null, '', `note-library.html#note-library:${targetFilePath}`);
-                    window.dispatchEvent(new HashChangeEvent('hashchange'));
-                }
+        if (noteContentElement) {
+            noteContentElement.querySelectorAll('a.internal-wikilink').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetFilePath = e.target.dataset.filepath;
+                    if (targetFilePath) {
+                        history.pushState(null, '', `note-library.html#note-library:${targetFilePath}`);
+                        window.dispatchEvent(new HashChangeEvent('hashchange'));
+                    }
+                });
             });
-        });
+        }
 
     } catch (error) {
         console.error('Error fetching Markdown file:', error);
         if (noteDisplayMainTitle) noteDisplayMainTitle.textContent = `Error loading note`;
-        if (noteTitleElement) {
-            noteTitleElement.style.display = 'block'; // Show if there's an error
-            noteTitleElement.textContent = `Error loading: ${displayName}`;
-        }
+        // No longer setting noteTitleElement text or style on error
         if (noteContentElement) noteContentElement.innerHTML = `<p class="text-red-600">Could not load note. Please ensure the file path is correct and the file is publicly accessible.</p><p>Error: ${error.message}</p>`;
     } finally {
         if (loadingOverlay) loadingOverlay.classList.add('hidden');
