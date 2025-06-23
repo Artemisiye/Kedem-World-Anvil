@@ -4,10 +4,10 @@ import { noteFiles } from './data-constants.js'; // Import noteFiles from consta
 import { markedInstance } from './markdown-parser.js'; // Import the configured marked instance
 
 export function setupNoteLibrary(loadingOverlay) {
-    const notesList = document.getElementById('notes-list');
+    const noteList = document.getElementById('notes-list');
     const noteTitle = document.getElementById('note-title');
     const noteContent = document.getElementById('note-content');
-    notesList.innerHTML = ''; 
+    noteList.innerHTML = ''; 
 
     // Function to build the folder structure recursively
     function buildFolderStructure(files) {
@@ -84,8 +84,8 @@ export function setupNoteLibrary(loadingOverlay) {
                 // Update URL hash without page reload
                 history.pushState(null, '', `#notes-library:${file}`); // Use new section name in hash
                 // Pass noteTitle, noteContent to the fetch function directly
-                await fetchAndDisplayMarkdown(file, loadingOverlay, noteTitle, noteContent);
-                document.querySelectorAll('#notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
+                await fetchAndDisplayNote(file, loadingOverlay, noteTitle, noteContent);
+                document.querySelectorAll('#note-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
                 link.classList.add('bg-slate-300', 'font-semibold');
             });
             listItem.appendChild(link);
@@ -94,10 +94,10 @@ export function setupNoteLibrary(loadingOverlay) {
         return ul;
     }
 
-    notesList.appendChild(createList(organizedFiles));
+    noteList.appendChild(createList(organizedFiles));
 }
 
-export async function fetchAndDisplayMarkdown(filePath, loadingOverlay, noteTitle, noteContent) {
+export async function fetchAndDisplayNote(filePath, loadingOverlay, noteTitle, noteContent) {
     loadingOverlay.classList.remove('hidden');
     const rawGitHubUrl = `https://raw.githubusercontent.com/Artemisiye/Kedem-World-Anvil/main/notes/${filePath}`;
     const displayName = filePath.split('/').pop().replace('.md', '').replace(/([A-Z])/g, ' $1').trim(); 
@@ -183,7 +183,7 @@ export async function fetchAndDisplayMarkdown(filePath, loadingOverlay, noteTitl
                 if (targetFilePath) {
                     history.pushState(null, '', targetFilePath); 
                     // Pass current HTML elements for Note Library to avoid re-querying
-                    fetchAndDisplayMarkdown(targetFilePath.substring('#notes-library:'.length), loadingOverlay, noteTitle, noteContent);
+                    fetchAndDisplayNote(targetFilePath.substring('#notes-library:'.length), loadingOverlay, noteTitle, noteContent);
                     
                     document.querySelectorAll('#notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
                     const correspondingLink = document.querySelector(`#notes-list a[data-filepath-raw="${targetFilePath.substring('#notes-library:'.length)}"]`);

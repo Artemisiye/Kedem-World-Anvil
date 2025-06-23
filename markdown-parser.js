@@ -20,8 +20,8 @@ marked.use({
         let targetWikiName = match[1].trim(); 
         const githubBasePath = `https://github.com/Artemisiye/Kedem-World-Anvil/blob/main/notes/`;
         
-        // Access window.noteFils (exported from data-constants.js and attached to window in index.html)
-        const resolvedFilePath = window.noteFils.find(f => 
+        // Access window.noteFiles (exported from data-constants.js and attached to window in index.html)
+        const resolvedFilePath = window.noteFiles.find(f => 
             f.toLowerCase() === `${targetWikiName.toLowerCase()}.md` || 
             f.toLowerCase().endsWith(`/${targetWikiName.toLowerCase()}.md`) ||
             f.toLowerCase().split('/').pop().replace('.md', '') === targetWikiName.toLowerCase() // Handles "Will Power" -> "Will Power.md"
