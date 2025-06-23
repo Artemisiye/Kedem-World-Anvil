@@ -65,7 +65,7 @@
     <!-- Application Structure Plan: A responsive single-page application with a fixed sidebar for primary navigation and a dynamic main content area. This structure allows users to easily switch between core topics (World, Pantheon, Bestiary, Gameplay, Lore Library) without losing context. The "Lore Library" section will dynamically fetch and display Markdown content from specific URLs. The key interaction is the "Pantheon Explorer," a filterable and searchable card grid, designed to make the large, complex hierarchy of deities manageable and easy to explore. This non-linear, thematic structure is more user-friendly for a GDD than a simple linear document, facilitating quick lookups and discovery of relationships between entities. -->
     <!-- Visualization & Content Choices: 
         - Pantheon: Goal: Organize & Compare. Method: Interactive card grid with filters for rank/influence and a search bar. When a card is clicked, a modal displays detailed information about the deity, now with editable fields for in-session modification and *permanent saving to Firestore*. This handles the large dataset effectively and provides drill-down functionality. Library: Vanilla JS + Tailwind, Chart.js, Firestore.
-        - Lore Library: Goal: Inform & Explore Textual Content. Method: Navigation list of Markdown files, dynamically fetching and rendering their content when clicked. Library: Vanilla JS + marked.js + Tailwind.
+        - Lore Library: Goal: Inform & Explore Textual Content. Method: Navigation list of Markdown files, dynamically fetching and rendering their content when clicked. Enhanced with custom Marked.js extension for [[wikilinks]]. Library: Vanilla JS + marked.js + Tailwind.
         - Gameplay Progression: Goal: Show Change. Method: Clickable horizontal timeline. This visualizes the game's flow. Library: HTML/CSS + JS for interaction.
         - Player Attributes: Goal: Inform & Explain Relationships. Method: A dynamic HTML/CSS diagram instead of a simple chart, showing how core attributes like Vitality and Resilience contribute to Effective Health. This is more explanatory than a basic bar chart. Library: HTML/CSS + JS.
         - Factions (Humans, Goblins, etc.): Goal: Compare. Method: Side-by-side content cards to highlight differences. Library: Tailwind Grid.
@@ -207,6 +207,15 @@
         .markdown-content table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
         .markdown-content th, .markdown-content td { border: 1px solid #cbd5e1; padding: 0.75rem; text-align: left; }
         .markdown-content th { background-color: #e2e8f0; }
+        /* Style for wikilinks */
+        .markdown-content a.wikilink {
+            color: #2563eb; /* blue-600 */
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .markdown-content a.wikilink:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -785,12 +794,52 @@
             // List of Markdown files to display in the Lore Library
             // IMPORTANT: Manually add paths to your notes here, relative to the /notes/ directory in your GitHub repo
             const loreFiles = [
-                'Magic/Mage.md',
-                'Gameplay/Gameplay Domains.md',
-                'World Building/Kedem Worldbuilding.md',
-                'World Building/NPC/Humanoids/Goblin.md',
-                'World Building/NPC/Humanoids/Hobgoblin.md',
-                'World Building/Gods/Titans/Titan.md',
+                'Mage.md',
+                'Gameplay Domains.md',
+                'Kedem Worldbuilding.md',
+                'Goblin.md',
+                'Hobgoblin.md',
+                'Titan.md',
+                'Yorick.md',
+                'Azathoth.md',
+                'Chronus.md',
+                'Gaia.md',
+                'Shamann.md',
+                'Yamm.md',
+                'Hades.md',
+                'Hypnos.md',
+                'Odin.md',
+                'Osiris.md',
+                'Ra.md',
+                'Poseidon.md',
+                'Zeus.md',
+                'Agni.md',
+                'Apollo.md',
+                'Ares.md',
+                'Artemis.md',
+                'Athena.md',
+                'Brigid.md',
+                'Dagan.md',
+                'Demeter.md',
+                'Dionysus.md',
+                'Geb.md',
+                'Hephaestus.md',
+                'Heracles.md',
+                'Hermes.md',
+                'Isis.md',
+                'Loki.md',
+                'Morrigan.md',
+                'Nemesis.md',
+                'Pan.md',
+                'Thor.md',
+                'Thoth.md',
+                'Ullr.md',
+                'Cthulhu.md',
+                'Nyarlathotep.md',
+                'Azazel.md',
+                'Ashmedai.md',
+                'Ben Shahar.md',
+                'Samael.md',
                 // Add more of your notes here as you wish them to appear in the library
                 // Example of nested path: 'World Building/Creatures/Dragon.md'
             ];
@@ -816,6 +865,31 @@
                     loreNotesList.appendChild(listItem);
                 });
             }
+
+            // MARKED.JS CUSTOM EXTENSION FOR WIKILINKS
+            marked.use({
+              extensions: [{
+                name: 'wikilink',
+                level: 'inline', // This is an inline extension
+                start(src) { return src.indexOf('[['); }, // The character to look for to start the parsing
+                tokenizer(src, tokens) {
+                  const rule = /^\[\[([^|\]]+?)(?:\|([^\]]+?))?\]\]/; // Regex to capture [[link|text]] or [[link]]
+                  const match = rule.exec(src);
+                  if (match) {
+                    return {
+                      type: 'wikilink',
+                      raw: match[0],
+                      page: match[1],
+                      text: match[2] || match[1], // Use custom text if provided, else use page name
+                      href: `https://github.com/Artemisiye/Kedem-World-Anvil/blob/main/notes/${match[1].replace(/ /g, '%20')}.md` // Construct GitHub URL
+                    };
+                  }
+                },
+                renderer(token) {
+                  return `<a href="${token.href}" class="wikilink" target="_blank">${token.text}</a>`;
+                }
+              }]
+            });
 
 
             function handleNavigation(hash) {
