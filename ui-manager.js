@@ -103,11 +103,7 @@ export function setupUI() {
         });
     });
     
-    // Pass noteFiles to handleNavigation via the global window object.
-    // The handleNavigation function will then call fetchAndDisplayNote,
-    // which also relies on window.noteFiles (from markdown-parser.js and data-constants.js).
     window.addEventListener('hashchange', () => handleNavigation(window.location.hash));
-    handleNavigation(window.location.hash); 
 
     setupAttributesChart();
     
@@ -118,6 +114,9 @@ export function setupUI() {
     
     // Pass the actual DOM elements to setupNoteLibrary
     setupNoteLibrary(loadingOverlay, noteListElement, noteTitleElement, noteContentElement); 
+
+    // IMPORTANT: Call handleNavigation *after* all UI elements are ensured to be in the DOM
+    handleNavigation(window.location.hash); 
 }
 
 function handleNavigation(hash) {
@@ -129,22 +128,38 @@ function handleNavigation(hash) {
     // Updated to use the new section name and handle default note display
     if (hash.startsWith('#note-library')) { // Check for base #note-library as well
         const filePathFromHash = hash.substring('#note-library:'.length);
-        document.querySelector('a[href="#note-library"]').classList.add('active'); // Activate Note Library nav link
-        document.getElementById('notes-library').classList.add('active'); // Activate Notes Library section (ID is 'notes-library')
         
+        // Ensure the notes-library section exists before trying to add classList
+        const notesLibrarySection = document.getElementById('notes-library');
+        if (notesLibrarySection) {
+            document.querySelector('a[href="#note-library"]').classList.add('active'); // Activate Note Library nav link
+            notesLibrarySection.classList.add('active'); // Activate Notes Library section (ID is 'notes-library')
+        } else {
+            console.error("Notes Library section element with ID 'notes-library' not found.");
+            // Potentially redirect to a default safe section or show an error message
+            return; 
+        }
+
         let fileToDisplay = filePathFromHash;
         // Get the note display elements here, as they are guaranteed to exist now (after DOMContentLoaded)
         const currentNoteTitle = document.getElementById('note-title'); 
         const currentNoteContent = document.getElementById('note-content'); 
         const currentNoteList = document.getElementById('notes-list'); 
 
+        // Add null checks for the individual note elements before using them
+        if (!currentNoteTitle || !currentNoteContent || !currentNoteList) {
+            console.error("Individual Note Library display elements (note-title, note-content, notes-list) not found.");
+            loadingOverlay.classList.add('hidden'); // Hide loading overlay if stuck
+            return;
+        }
+
         if (filePathFromHash === '' || filePathFromHash === 'note-library' || !noteFiles.includes(filePathFromHash)) { 
             if (noteFiles.length > 0) { 
                 fileToDisplay = noteFiles[0]; // Display the first note by default
             } else {
                 console.warn("No notes available in noteFiles array to display.");
-                if (currentNoteTitle) currentNoteTitle.textContent = "No Notes Available"; 
-                if (currentNoteContent) currentNoteContent.innerHTML = "<p>The note library is empty or could not be loaded.</p>"; 
+                currentNoteTitle.textContent = "No Notes Available"; 
+                currentNoteContent.innerHTML = "<p>The note library is empty or could not be loaded.</p>"; 
                 loadingOverlay.classList.add('hidden');
                 return; // Exit if no files to display
             }
@@ -153,7 +168,7 @@ function handleNavigation(hash) {
         // Pass the retrieved elements to the fetch function
         fetchAndDisplayNote(fileToDisplay, loadingOverlay, currentNoteTitle, currentNoteContent); 
         
-        if (currentNoteList) {
+        if (currentNoteList) { // Already checked above, but good to be explicit
             currentNoteList.querySelectorAll('a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold')); 
             const correspondingLink = currentNoteList.querySelector(`a[data-filepath-raw="${fileToDisplay}"]`); 
             if (correspondingLink) {
