@@ -3,10 +3,9 @@
 import { noteFiles } from './data-constants.js'; 
 import { markedInstance } from './markdown-parser.js'; 
 
-// setupNoteLibrary now accepts the DOM elements as arguments
+// setupNoteLibrary now accepts the DOM elements as arguments from ui-manager.js
 export function setupNoteLibrary(loadingOverlay, noteList, noteTitle, noteContent) { 
-    // The checks for null elements are now handled by the caller (ui-manager.js)
-    // and removed from here as they are guaranteed to be passed.
+    // These elements are now guaranteed to be passed by ui-manager.js after the DOM is ready.
 
     noteList.innerHTML = ''; 
 
@@ -83,8 +82,11 @@ export function setupNoteLibrary(loadingOverlay, noteList, noteTitle, noteConten
                 e.preventDefault();
                 history.pushState(null, '', `#note-library:${file}`); 
                 await fetchAndDisplayNote(file, loadingOverlay, noteTitle, noteContent); 
-                document.querySelectorAll('#notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold')); 
-                link.classList.add('bg-slate-300', 'font-semibold');
+                document.querySelectorAll('#note-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold')); 
+                const correspondingLink = document.querySelector(`#note-list a[data-filepath-raw="${file}"]`); 
+                if (correspondingLink) {
+                    correspondingLink.classList.add('bg-slate-300', 'font-semibold');
+                }
             });
             listItem.appendChild(link);
             ul.appendChild(listItem);
@@ -177,8 +179,8 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteTitle, n
                     history.pushState(null, '', targetFilePath); 
                     fetchAndDisplayNote(targetFilePath.substring('#note-library:'.length), loadingOverlay, noteTitle, noteContent); 
                     
-                    document.querySelectorAll('#notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold')); 
-                    const correspondingLink = document.querySelector(`#notes-list a[data-filepath-raw="${targetFilePath.substring('#note-library:'.length)}"]`); 
+                    document.querySelectorAll('#note-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold')); 
+                    const correspondingLink = document.querySelector(`#note-list a[data-filepath-raw="${targetFilePath.substring('#note-library:'.length)}"]`); 
                     if (correspondingLink) {
                         correspondingLink.classList.add('bg-slate-300', 'font-semibold');
                     }
