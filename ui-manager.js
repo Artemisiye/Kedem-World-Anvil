@@ -69,20 +69,22 @@ function setupGlobalNav(currentPage) {
         link.classList.remove('active'); 
     });
 
-    // Highlight the appropriate navigation link based on the current page
+    // Highlight the appropriate navigation link/text based on the current page
     if (currentPage === 'explorer.html' || currentPage === '') {
-        // Find the 'The World' link and activate it by default on explorer.html
-        const worldNavLink = document.querySelector('a[href="explorer.html#world"]');
-        if (worldNavLink) {
-            worldNavLink.classList.add('active');
-        }
-    } else if (currentPage === 'note-library.html') {
-        // For note-library.html, the 'Note Library' is no longer a clickable nav-link,
-        // but represented by the static .sidebar-active-text
+        // For explorer.html, initial highlight is done in handleExplorerNavigation based on hash
+        // Here, just make sure the 'Note Library' static text is NOT highlighted if present
         const noteLibraryStaticText = document.querySelector('.sidebar-active-text');
         if (noteLibraryStaticText) {
-            noteLibraryStaticText.classList.add('active'); // Add active class to static text
+            noteLibraryStaticText.classList.remove('active');
         }
+    } else if (currentPage === 'note-library.html') {
+        // For note-library.html, the 'Note Library' is a static text with specific styling
+        const noteLibraryStaticText = document.querySelector('.sidebar-active-text');
+        if (noteLibraryStaticText) {
+            noteLibraryStaticText.classList.add('active'); 
+        }
+        // Ensure no other .nav-link is active on this page if it's meant to be static
+        navLinks.forEach(link => link.classList.remove('active'));
     }
 
     // Handle home link click
@@ -94,20 +96,16 @@ function setupGlobalNav(currentPage) {
         });
     }
 
-    // Add general click listeners for direct page navigation from sidebar
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             const currentPageName = window.location.pathname.split('/').pop();
 
-            // Handle internal SPA navigation for explorer.html
-            // If the clicked link's href starts with 'explorer.html#' and we are on explorer.html
+            // Handle internal SPA navigation for explorer.html 
             if (link.getAttribute('href').startsWith('explorer.html#') && 
-                (currentPageName === 'explorer.html' || currentPageName === '')) { // Include '' for root index.html
-                e.preventDefault(); // Prevent full page reload
+                (currentPageName === 'explorer.html' || currentPageName === '')) { 
+                e.preventDefault(); 
                 window.location.hash = link.getAttribute('href').split('#')[1];
             } 
-            // For other links (like navigating from explorer to note-library.html or vice versa), 
-            // let default browser behavior (full page reload) handle it.
         });
     });
 }
@@ -139,7 +137,7 @@ function setupAuthControls(currentPage) {
     loginButton.addEventListener('click', async () => {
         const email = loginEmailInput.value;
         const password = loginPasswordInput.value;
-        const authErrorMessage = document.getElementById('auth-error-message'); // Get here, as it might not exist on all pages
+        const authErrorMessage = document.getElementById('auth-error-message'); 
         authErrorMessage.classList.add('hidden'); 
         if (email && password) {
             loadingOverlay.classList.remove('hidden');
@@ -159,7 +157,7 @@ function setupAuthControls(currentPage) {
         loadingOverlay.classList.remove('hidden');
         const result = await signOutUser();
         if (!result.success) {
-            const authErrorMessage = document.getElementById('auth-error-message'); // Get here
+            const authErrorMessage = document.getElementById('auth-error-message'); 
             authErrorMessage.textContent = `Error logging out: ${result.error}`;
             authErrorMessage.classList.remove('hidden');
         } else {
@@ -202,7 +200,7 @@ function initExplorerPage() {
 
         if (targetSection) {
             targetSection.classList.add('active');
-            // Highlight the corresponding nav link
+            // Highlight the corresponding nav link based on its href
             const correspondingNavLink = document.querySelector(`a[href="explorer.html#${targetSectionId}"]`);
             if (correspondingNavLink) {
                 correspondingNavLink.classList.add('active');
@@ -211,7 +209,7 @@ function initExplorerPage() {
             // Default to 'world' section if target not found
             document.getElementById('world').classList.add('active'); 
             document.querySelector('a[href="explorer.html#world"]').classList.add('active');
-            window.location.hash = '#world'; // Update hash to reflect default
+            window.location.hash = '#world'; 
         }
 
         const sectionName = (targetSectionId.charAt(0).toUpperCase() + targetSectionId.slice(1)).replace('-', ' ');
@@ -231,17 +229,30 @@ function initNoteLibraryPage() {
     const noteContentElement = document.getElementById('note-content');
     const noteDisplayMainTitle = document.getElementById('note-display-title'); 
 
+    // Crucial check: Ensure all elements are found before proceeding
     if (!noteListElement || !noteTitleElement || !noteContentElement || !noteDisplayMainTitle) {
         console.error("Note Library UI elements (note-list, note-title, note-content, note-display-title) not found. Cannot initialize Note Library.");
         loadingOverlay.classList.add('hidden');
-        return;
+        // Display a user-facing error message in the main content area
+        const mainContentArea = document.querySelector('main');
+        if (mainContentArea) {
+            mainContentArea.innerHTML = `
+                <h2 class="text-4xl font-bold text-red-600 mb-6 border-b-4 border-red-400 pb-2">Error Loading Note Library</h2>
+                <div class="bg-white p-6 rounded-xl shadow-sm text-base text-slate-700 leading-relaxed">
+                    <p>There was a problem loading the Note Library. Some required HTML elements were not found.</p>
+                    <p>Please ensure all IDs in note-library.html match those expected by the JavaScript.</p>
+                    <p>If the issue persists, try clearing your browser cache and refreshing the page.</p>
+                </div>
+            `;
+        }
+        return; // Stop initialization if elements are not found
     }
     
     // Pass the retrieved DOM elements to setupNoteLibrary
     setupNoteLibrary(loadingOverlay, noteListElement, noteTitleElement, noteContentElement, noteDisplayMainTitle); 
 
     window.addEventListener('hashchange', () => handleNoteLibraryNavigation(window.location.hash));
-    handleNoteLibraryNavigation(window.location.hash); 
+    handleNoteLibraryNavigation(window.location.hash); // Initial load based on hash
 
     /**
      * Handles navigation within the Note Library page (deep links to specific notes).
