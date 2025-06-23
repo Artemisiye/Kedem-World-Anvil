@@ -289,7 +289,7 @@ function initNoteLibraryPage() {
     function handleNoteLibraryNavigation(hash) {
         let filePathFromHash = '';
         if (hash.startsWith('#note-library:')) {
-            filePathFromHash = hash.substring('#note-library:'.length);
+            filePathFromHash = decodeURIComponent(hash.substring('#note-library:'.length));
         }
 
         let fileToDisplay = filePathFromHash;
