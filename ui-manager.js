@@ -1,8 +1,8 @@
 // ui-manager.js
 import { db, currentUserId, auth, signInUser, signOutUser } from './firebase-init.js'; 
-import { initializeDeityManager } from './deity-manager.js'; // Only imported/used if on explorer.html
-import { setupNoteLibrary, fetchAndDisplayNote } from './note-library-manager.js'; // Only imported/used if on note-library.html
-import { noteFiles } from './data-constants.js'; // Shared, used for wikilinks and note library logic
+import { initializeDeityManager } from './deity-manager.js'; 
+import { setupNoteLibrary, fetchAndDisplayNote } from './note-library-manager.js'; 
+import { noteFiles } from './data-constants.js'; 
 
 // Global UI elements that are always present (sidebar, loading overlay, auth controls)
 const navLinks = document.querySelectorAll('.nav-link');
@@ -64,24 +64,28 @@ export function setupUI() {
  * @param {string} currentPage - The filename of the current HTML page.
  */
 function setupGlobalNav(currentPage) {
+    // Remove active class from all nav links first
     navLinks.forEach(link => {
         link.classList.remove('active'); 
-        const linkHref = link.getAttribute('href');
-
-        // Logic to highlight the current main page/section
-        if (currentPage === 'explorer.html' || currentPage === '') {
-            const currentHash = window.location.hash || '#world';
-            if (linkHref === `explorer.html${currentHash}` || (linkHref === 'explorer.html#world' && currentHash === '#world')) {
-                link.classList.add('active');
-            }
-        } else if (currentPage === 'note-library.html') {
-            // Only highlight the "Note Library" link itself if it exists and we're on this page
-            if (linkHref === 'note-library.html') {
-                link.classList.add('active');
-            }
-        }
     });
 
+    // Highlight the appropriate navigation link based on the current page
+    if (currentPage === 'explorer.html' || currentPage === '') {
+        // Find the 'The World' link and activate it by default on explorer.html
+        const worldNavLink = document.querySelector('a[href="explorer.html#world"]');
+        if (worldNavLink) {
+            worldNavLink.classList.add('active');
+        }
+    } else if (currentPage === 'note-library.html') {
+        // For note-library.html, the 'Note Library' is no longer a clickable nav-link,
+        // but represented by the static .sidebar-active-text
+        const noteLibraryStaticText = document.querySelector('.sidebar-active-text');
+        if (noteLibraryStaticText) {
+            noteLibraryStaticText.classList.add('active'); // Add active class to static text
+        }
+    }
+
+    // Handle home link click
     const homeLink = document.getElementById('home-link'); 
     if (homeLink) {
         homeLink.addEventListener('click', (e) => {
@@ -90,18 +94,20 @@ function setupGlobalNav(currentPage) {
         });
     }
 
+    // Add general click listeners for direct page navigation from sidebar
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             const currentPageName = window.location.pathname.split('/').pop();
 
-            // Handle internal SPA navigation for explorer.html or note-library.html
-            // If the clicked link's href starts with a hash and we are on the correct page.
-            if (link.getAttribute('href').startsWith('#') && 
-                (currentPageName === 'explorer.html' || currentPageName === 'note-library.html')) {
+            // Handle internal SPA navigation for explorer.html
+            // If the clicked link's href starts with 'explorer.html#' and we are on explorer.html
+            if (link.getAttribute('href').startsWith('explorer.html#') && 
+                (currentPageName === 'explorer.html' || currentPageName === '')) { // Include '' for root index.html
                 e.preventDefault(); // Prevent full page reload
                 window.location.hash = link.getAttribute('href').split('#')[1];
             } 
-            // For full page reloads (e.g., clicking from explorer to note-library.html), let default behavior happen
+            // For other links (like navigating from explorer to note-library.html or vice versa), 
+            // let default browser behavior (full page reload) handle it.
         });
     });
 }
@@ -183,16 +189,29 @@ function initExplorerPage() {
     function handleExplorerNavigation(hash) {
         if (!hash || !hash.startsWith('#')) hash = '#world';
 
+        // Remove active class from all content sections
         contentSections.forEach(section => section.classList.remove('active'));
         
         const targetSectionId = hash.substring(1);
         const targetSection = document.getElementById(targetSectionId);
 
+        // Remove active class from all explorer nav links
+        document.querySelectorAll('a[href^="explorer.html#"]').forEach(link => {
+            link.classList.remove('active');
+        });
+
         if (targetSection) {
             targetSection.classList.add('active');
+            // Highlight the corresponding nav link
+            const correspondingNavLink = document.querySelector(`a[href="explorer.html#${targetSectionId}"]`);
+            if (correspondingNavLink) {
+                correspondingNavLink.classList.add('active');
+            }
         } else {
+            // Default to 'world' section if target not found
             document.getElementById('world').classList.add('active'); 
-            window.location.hash = '#world';
+            document.querySelector('a[href="explorer.html#world"]').classList.add('active');
+            window.location.hash = '#world'; // Update hash to reflect default
         }
 
         const sectionName = (targetSectionId.charAt(0).toUpperCase() + targetSectionId.slice(1)).replace('-', ' ');

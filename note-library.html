@@ -23,6 +23,7 @@
         ::-webkit-scrollbar-track { background: #e2e8f0; } /* slate-200 */
         ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; } /* slate-400 */
         ::-webkit-scrollbar-thumb:hover { background: #64748b; } /* slate-500 */
+        /* Active nav link styling for main pages */
         .nav-link.active {
             background-color: #fbbf24; /* amber-400 */
             color: #1e293b; /* slate-800 */
@@ -137,6 +138,16 @@
             border-left: 1px solid #475569; /* slate-600 border */
             padding-left: 0.5rem; /* pl-2 */
         }
+        /* Specific styling for the 'Note Library' active text in sidebar */
+        .sidebar-active-text {
+            background-color: #fbbf24; /* amber-400 */
+            color: #1e293b; /* slate-800 */
+            font-weight: 600;
+            display: block;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            user-select: none; /* Prevent text selection */
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -152,16 +163,19 @@
             <div class="h-16 flex items-center justify-center border-b border-slate-700">
                 <a href="explorer.html#world" id="home-link" class="text-2xl font-bold text-amber-400 hover:text-amber-300 transition-colors duration-200">Kedem Anvil</a>
             </div>
-            <nav class="flex-none px-4 py-4 space-y-2"> <!-- flex-none to not take up vertical space -->
-                <!-- Simplified navigation for Note Library page -->
-                <a href="explorer.html#world" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">The World (Explorer)</a>
-                <!-- "Note Library" link is removed as we are already on this page and the home link is sufficient for navigation -->
+            
+            <!-- Removed the full <nav> section here.
+                 Instead, direct links to primary pages if needed, otherwise static text. -->
+            <nav class="flex-none px-4 py-4 space-y-2">
+                <!-- The "Note Library" text that should be highlighted when on this page -->
+                <span class="sidebar-active-text flex items-center">Note Library</span>
             </nav>
+
             <!-- Note-specific sidebar content below main navigation -->
-            <!-- Adjusted flex-auto to fill remaining vertical space and scroll -->
+            <!-- flex-auto to fill remaining vertical space and scroll -->
             <div class="flex-auto p-4 overflow-y-auto border-t border-slate-700"> 
                 <h3 class="text-xl font-bold text-teal-300 mb-3">Notes</h3>
-                <ul id="note-list" class="space-y-1"> <!-- space-y-1 for tighter list items -->
+                <ul id="note-list" class="space-y-1"> 
                     <!-- Note list will be injected here by JavaScript -->
                 </ul>
             </div>
