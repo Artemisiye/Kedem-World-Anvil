@@ -12,10 +12,10 @@
     <!-- Chosen Palette: Warm Neutrals (Slate, Amber, Teal) -->
     <!-- Application Structure Plan: A responsive single-page application with a fixed sidebar for primary navigation and a dynamic main content area. This structure allows users to easily switch between core topics (World, Pantheon, Bestiary, Gameplay) without losing context. The key interaction is the "Pantheon Explorer," a filterable and searchable card grid, designed to make the large, complex hierarchy of deities manageable and easy to explore. This non-linear, thematic structure is more user-friendly for a GDD than a simple linear document, facilitating quick lookups and discovery of relationships between entities. -->
     <!-- Visualization & Content Choices: 
-        - Pantheon: Goal: Organize & Compare. Method: Interactive card grid with filters for rank/influence and a search bar. This handles the large dataset effectively. Library: Vanilla JS + Tailwind.
+        - Pantheon: Goal: Organize & Compare. Method: Interactive card grid with filters for rank/influence and a search bar. When a card is clicked, a modal displays detailed information about the deity. This handles the large dataset effectively and provides drill-down functionality. Library: Vanilla JS + Tailwind.
         - Gameplay Progression: Goal: Show Change. Method: Clickable horizontal timeline. This visualizes the game's flow. Library: HTML/CSS + JS for interaction.
         - Player Attributes: Goal: Inform & Explain Relationships. Method: A dynamic HTML/CSS diagram instead of a simple chart, showing how core attributes like Vitality and Resilience contribute to Effective Health. This is more explanatory than a basic bar chart. Library: HTML/CSS + JS.
-        - Factions (Humans, Goblins, etc.): Goal: Compare. Method: Side-by-Side content cards to highlight differences. Library: Tailwind Grid.
+        - Factions (Humans, Goblins, etc.): Goal: Compare. Method: Side-by-side content cards to highlight differences. Library: Tailwind Grid.
         - Justification: These choices prioritize interactivity and comprehension, transforming the static GDD into an exploratory tool.
     -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
@@ -54,10 +54,61 @@
         }
         .deity-card {
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            cursor: pointer; /* Indicate clickable */
         }
         .deity-card:hover {
             transform: translateY(-4px);
             box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50; /* Tailwind z-50 */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .modal-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 2.5rem; /* p-10 */
+            border-radius: 1rem; /* rounded-xl */
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            color: #334155;
+            transform: translateY(20px);
+            transition: transform 0.3s ease-in-out;
+        }
+        .modal-overlay.open .modal-content {
+            transform: translateY(0);
+        }
+        .modal-close-button {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b; /* slate-500 */
+            transition: color 0.2s;
+        }
+        .modal-close-button:hover {
+            color: #1e293b; /* slate-800 */
         }
     </style>
 </head>
@@ -194,7 +245,7 @@
                     </div>
 
                     <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="text-2xl font-bold text-teal-700 mb-4">Magic Systems</h3>
+                        <h3 class="2xl font-bold text-teal-700 mb-4">Magic Systems</h3>
                          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <div class="bg-slate-50 p-4 rounded-lg">
                                 <h4 class="font-bold text-lg text-amber-700">Sorcerer</h4>
@@ -220,49 +271,63 @@
         </main>
     </div>
 
+    <!-- Deity Detail Modal -->
+    <div id="deity-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close-button" id="deity-modal-close-button">&times;</button>
+            <h3 id="modal-deity-name" class="text-3xl font-bold text-slate-800 mb-3"></h3>
+            <p id="modal-deity-aliases" class="text-lg text-slate-500 italic mb-4"></p>
+            <div id="modal-deity-tags" class="flex flex-wrap gap-2 mb-4"></div>
+            <p id="modal-deity-description" class="text-base text-slate-600 leading-relaxed"></p>
+            <div id="modal-deity-additional" class="mt-4 space-y-2 text-base text-slate-700">
+                <!-- Additional structured details like offerings, favors, boons will go here -->
+            </div>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const deityData = [
-                { name: 'Azathoth', aliases: 'The Blind Idiot God, Chaos', tags: ['God/OuterGod'] },
-                { name: 'Chronus', aliases: 'The Time', tags: ['God/Primordial'] },
-                { name: 'Gaia', aliases: 'The Earth', tags: ['God/Primordial'], description: 'Gaia is the primordial embodiment of the living world. All natural mana flows from her, and it is through her that the cycle of life, death, and rebirth is maintained. She is vast, ancient, and mostly dormant. Humanoids were intended to serve her, but humans—born of Prometheus—are unique in that they are no longer tied to her cycle.' },
-                { name: 'Shamann', aliases: 'The Sun', tags: ['God/Primordial'] },
-                { name: 'Yamm', aliases: 'The Ocean', tags: ['God/Primordial'] },
-                { name: 'Yorick', aliases: 'The Moon', tags: ['God/Primordial'] },
-                { name: 'Hades', aliases: '', tags: ['Influence/Greek', 'God/Overlord'] },
-                { name: 'Hypnos', aliases: '', tags: ['Influence/Greek', 'God/Overlord'] },
-                { name: 'Odin', aliases: '', tags: ['Influence/Norse', 'God/Overlord'] },
-                { name: 'Osiris', aliases: '', tags: ['Influence/Egyptian', 'God/Overlord'] },
-                { name: 'Poseidon', aliases: '', tags: ['Influence/Greek', 'God/Overlord'] },
-                { name: 'Ra', aliases: '', tags: ['Influence/Egyptian', 'God/Overlord'] },
+                { name: 'Azathoth', aliases: 'The Blind Idiot God, Chaos', tags: ['God/OuterGod'], description: 'The embodiment of chaos and destruction. A devouring black hole that seeks to bring the cosmos to its end. The mere presence of Azathoth warps space and time, threatening the existence of the Primordials.' },
+                { name: 'Chronus', aliases: 'The Time', tags: ['God/Primordial'], description: 'The Cosmic/Primordial Deity embodying time itself.' },
+                { name: 'Gaia', aliases: 'The Earth', tags: ['God/Primordial'], description: 'Gaia is the primordial embodiment of the living world—land, soil, root, and breath. She is not worshiped in temples like the Overlords, but her presence is felt in every forest, mountain, and heartbeat. All natural mana flows from Gaia, and it is through her that the cycle of life, death, and rebirth is maintained. She is vast, ancient, and mostly dormant. Humanoids were intended to serve her, but humans—born of Prometheus—are unique in that they are no longer tied to her cycle.' },
+                { name: 'Shamann', aliases: 'The Sun', tags: ['God/Primordial'], description: 'The Sun Itself, a radiant entity beaming with light and power. Shamann’s light provides strength to the Overlords and Gaia herself.' },
+                { name: 'Yamm', aliases: 'The Ocean', tags: ['God/Primordial'], description: 'The Cosmic/Primordial Deity embodying the ocean itself.' },
+                { name: 'Yorick', aliases: 'The Moon', tags: ['God/Primordial'], description: 'The Cosmic/Primordial Deity embodying the moon itself.' },
+                { name: 'Hades', aliases: '', tags: ['Influence/Greek', 'God/Overlord'], description: 'A Greek Overlord deity.' },
+                { name: 'Hypnos', aliases: '', tags: ['Influence/Greek', 'God/Overlord'], description: 'A Greek Overlord deity. Played a role in imprisoning Cthulhu.' },
+                { name: 'Odin', aliases: '', tags: ['Influence/Norse', 'God/Overlord'], description: 'The All-Knowing-Father, a god of wisdom, knowledge, and magic. He sacrificed much to gain knowledge of the cosmic forces, guiding humanity and the gods alike in matters of fate.' },
+                { name: 'Osiris', aliases: '', tags: ['Influence/Egyptian', 'God/Overlord'], description: 'An Egyptian Overlord deity. Associated with Necromantic magic.' },
+                { name: 'Poseidon', aliases: '', tags: ['Influence/Greek', 'God/Overlord'], description: 'A Greek Overlord deity. Associated with horse riding and channeling water.' },
+                { name: 'Ra', aliases: '', tags: ['Influence/Egyptian', 'God/Overlord'], description: 'The Sun Overlord, the god of science, light and order, who spins Gaia to brings the sun across the sky each day. Ra’s power is connected directly to Shamann, who\'s power is channeled through the sun temples.' },
                 { name: 'Zeus', aliases: 'General of the Gods', tags: ['Influence/Greek', 'God/Overlord'], description: 'Zeus is one of the Overlords, known as the General of the Gods, the lord of the sky and thunder. Zeus rules from his temple in Mount Olympus, governing the west of the continent and overseeing Cthulhu\'s prison.' },
-                { name: 'Agni', aliases: '', tags: ['Influence/Hindu', 'God/LowerGod'] },
-                { name: 'Apollo', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'] },
+                { name: 'Agni', aliases: '', tags: ['Influence/Hindu', 'God/LowerGod'], description: 'A Hindu Lower God. Associated with Fire.' },
+                { name: 'Apollo', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Combat Archery, Barding, and music.' },
                 { name: 'Ares', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'God of War and Combat. Offerings: Offensive combat abilities, Melee stances. Favors: Offensive combat, Bloodshed, Duels. Starting Boon: Bloodthirsty Vision, Rare bloodthirsty spear.' },
-                { name: 'Artemis', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'] },
+                { name: 'Artemis', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Hunting and the Moon (via Yorick).' },
                 { name: 'Athena', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'Goddess of War and Strategy. Offerings: Defensive combat abilities (parry), Target lock on Combat enhancing spells. Favors: Building communities. Starting Boon: Rare shield and sword.' },
-                { name: 'Brigid', aliases: '', tags: ['Influence/Celtic', 'God/LowerGod'] },
-                { name: 'Dagan', aliases: '', tags: ['Influence/Mesopotamian', 'God/LowerGod'] },
-                { name: 'Demeter', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'] },
-                { name: 'Dionysus', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'] },
-                { name: 'Geb', aliases: '', tags: ['Influence/Egyptian', 'God/LowerGod'] },
-                { name: 'Hephaestus', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'] },
-                { name: 'Heracles', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'] },
-                { name: 'Hermes', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'] },
-                { name: 'Isis', aliases: '', tags: ['Influence/Egyptian', 'God/LowerGod'] },
-                { name: 'Loki', aliases: '', tags: ['Influence/Norse', 'God/LowerGod'] },
-                { name: 'Morrigan', aliases: '', tags: ['Influence/Celtic', 'God/LowerGod'] },
-                { name: 'Nemesis', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'] },
-                { name: 'Pan', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'] },
-                { name: 'Thor', aliases: '', tags: ['Influence/Norse', 'God/LowerGod'] },
-                { name: 'Thoth', aliases: '', tags: ['Influence/Egyptian', 'God/LowerGod'] },
-                { name: 'Ullr', aliases: '', tags: ['Influence/Norse', 'God/LowerGod'] },
-                { name: 'Cthulhu', aliases: 'The Earth Dweller', tags: ['God/GreatOldOnes'], description: 'An enormous alien entity from beyond the solar system. Cthulhu embodies cosmic horror and corruption, eternally imprisoned in The Dark Sea yet continuously influencing and corrupting the land.' },
-                { name: 'Nyarlathotep', aliases: 'Nyarlathotep', tags: ['God/GreatOldOnes'] },
-                { name: 'Ashmedai', aliases: 'The Demon King', tags: ['God/Devil'] },
-                { name: 'Azazel', aliases: 'Azael', tags: ['God/Devil'] },
-                { name: 'Ben Shahar', aliases: 'Hilel, Lucifer, The Lightbringer', tags: ['God/Devil'] },
-                { name: 'Samael', aliases: 'Satan, The Creeping Death', tags: ['God/Devil'] },
+                { name: 'Brigid', aliases: '', tags: ['Influence/Celtic', 'God/LowerGod'], description: 'A Celtic Lower God. Associated with Animal handling.' },
+                { name: 'Dagan', aliases: '', tags: ['Influence/Mesopotamian', 'God/LowerGod'], description: 'A Mesopotamian Lower God. Associated with Agriculture.' },
+                { name: 'Demeter', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Agriculture.' },
+                { name: 'Dionysus', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Wine making.' },
+                { name: 'Geb', aliases: '', tags: ['Influence/Egyptian', 'God/LowerGod'], description: 'An Egyptian Lower God. Associated with Earth.' },
+                { name: 'Hephaestus', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Crafting.' },
+                { name: 'Heracles', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Hand-to-hand combat.' },
+                { name: 'Hermes', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Communication and Trading.' },
+                { name: 'Isis', aliases: '', tags: ['Influence/Egyptian', 'God/LowerGod'], description: 'An Egyptian Lower God. Associated with Healing.' },
+                { name: 'Loki', aliases: '', tags: ['Influence/Norse', 'God/LowerGod'], description: 'A Norse Lower God. Associated with Illusions.' },
+                { name: 'Morrigan', aliases: '', tags: ['Influence/Celtic', 'God/LowerGod'], description: 'A Celtic Lower God. Associated with Hexblade / spellblade.' },
+                { name: 'Nemesis', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Retribution.' },
+                { name: 'Pan', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Druid and nature.' },
+                { name: 'Thor', aliases: '', tags: ['Influence/Norse', 'God/LowerGod'], description: 'A Norse Lower God. Associated with Physical augmentation.' },
+                { name: 'Thoth', aliases: '', tags: ['Influence/Egyptian', 'God/LowerGod'], description: 'An Egyptian Lower God. Associated with Alchemy.' },
+                { name: 'Ullr', aliases: '', tags: ['Influence/Norse', 'God/LowerGod'], description: 'A Norse Lower God. Associated with Survival.' },
+                { name: 'Cthulhu', aliases: 'The Earth Dweller', tags: ['God/GreatOldOnes'], description: 'An enormous alien entity from beyond the solar system. A Great Old One, Cthulhu embodies cosmic horror and corruption, eternally imprisoned in The Dark Sea yet continuously influencing and corrupting the land.' },
+                { name: 'Nyarlathotep', aliases: 'Nyarlathotep', tags: ['God/GreatOldOnes'], description: 'The Crawling Chaos, a shape-shifting entity that represents deception, madness, and the decay of reality. A manipulator who arrived to infiltrate Gaia after Cthulhu was defeated and trapped.' },
+                { name: 'Ashmedai', aliases: 'The Demon King', tags: ['God/Devil'], description: 'Son of Azazel, and known as The Demon King.' },
+                { name: 'Azazel', aliases: 'Azael', tags: ['God/Devil'], description: 'The Deviant, a former Lower God who became a Devil.' },
+                { name: 'Ben Shahar', aliases: 'Hilel, Lucifer, The Lightbringer', tags: ['God/Devil'], description: 'Son of the moon (Yorick), fallen from the moon to the earth.' },
+                { name: 'Samael', aliases: 'Satan, The Creeping Death', tags: ['God/Devil'], description: 'An enigmatic god, perhaps the primordial Death Itself.' },
             ];
 
             const deityGrid = document.getElementById('deity-grid');
@@ -270,6 +335,15 @@
             const rankFiltersContainer = document.getElementById('rank-filters');
             const navLinks = document.querySelectorAll('.nav-link');
             const contentSections = document.querySelectorAll('.content-section');
+
+            const deityModal = document.getElementById('deity-modal');
+            const deityModalCloseButton = document.getElementById('deity-modal-close-button');
+            const modalDeityName = document.getElementById('modal-deity-name');
+            const modalDeityAliases = document.getElementById('modal-deity-aliases');
+            const modalDeityTags = document.getElementById('modal-deity-tags');
+            const modalDeityDescription = document.getElementById('modal-deity-description');
+            const modalDeityAdditional = document.getElementById('modal-deity-additional');
+
 
             let activeRankFilter = 'All';
 
@@ -317,12 +391,68 @@
                                 <span class="text-xs font-semibold px-2 py-1 rounded-full ${getTagColor(rank)}">${rank}</span>
                             </div>
                             <p class="text-sm text-slate-500 italic mb-3">${deity.aliases || ' '}</p>
-                            <p class="text-base text-slate-600">${deity.description || 'No description available.'}</p>
+                            <p class="text-base text-slate-600">${deity.description ? truncateText(deity.description, 150) : 'No description available.'}</p>
                         </div>
                     `;
+                    card.addEventListener('click', () => openDeityModal(deity));
                     deityGrid.appendChild(card);
                 });
             }
+
+            function truncateText(text, maxLength) {
+                if (text.length > maxLength) {
+                    return text.substring(0, maxLength) + '...';
+                }
+                return text;
+            }
+
+            function openDeityModal(deity) {
+                modalDeityName.textContent = deity.name;
+                modalDeityAliases.textContent = deity.aliases || '';
+                modalDeityDescription.textContent = deity.description || 'No description available.';
+                
+                modalDeityTags.innerHTML = '';
+                deity.tags.forEach(tag => {
+                    const tagSpan = document.createElement('span');
+                    tagSpan.className = `text-xs font-semibold px-2 py-1 rounded-full ${getTagColor(getRank(deity.tags))}`; // Use getRank for consistent colors
+                    tagSpan.textContent = tag;
+                    modalDeityTags.appendChild(tagSpan);
+                });
+
+                modalDeityAdditional.innerHTML = '';
+                if (deity.offerings) {
+                    modalDeityAdditional.innerHTML += `<p><b class="font-semibold">Offerings</b>: ${deity.offerings}</p>`;
+                }
+                if (deity.favors) {
+                    modalDeityAdditional.innerHTML += `<p><b class="font-semibold">Favors</b>: ${deity.favors}</p>`;
+                }
+                if (deity.startingBoon) {
+                     let boonText = '';
+                     if (Array.isArray(deity.startingBoon)) {
+                         boonText = deity.startingBoon.join(', ');
+                     } else {
+                         boonText = deity.startingBoon;
+                     }
+                    modalDeityAdditional.innerHTML += `<p><b class="font-semibold">Starting Boon</b>: ${boonText}</p>`;
+                }
+                if (deity.domain) {
+                    modalDeityAdditional.innerHTML += `<p><b class="font-semibold">Domain</b>: ${deity.domain}</p>`;
+                }
+
+
+                deityModal.classList.add('open');
+            }
+
+            function closeDeityModal() {
+                deityModal.classList.remove('open');
+            }
+
+            deityModalCloseButton.addEventListener('click', closeDeityModal);
+            deityModal.addEventListener('click', (e) => {
+                if (e.target === deityModal) {
+                    closeDeityModal();
+                }
+            });
 
             function setupFilters() {
                 const ranks = ['All', ...new Set(deityData.map(d => getRank(d.tags)))];
@@ -456,6 +586,127 @@
             // Initial load
             handleNavigation(window.location.hash);
             setupAttributesChart();
+
+            // Populate deityData descriptions and other fields
+            // The descriptions from the prior canvas were already in the JS deityData array
+            // Adding a few more details from the gameplay domains notes directly here for completeness
+            // This is how you would add more structured data for a deity if it wasn't already in the description string
+            deityData.forEach(deity => {
+                if (deity.name === 'Apollo') {
+                    deity.description = deity.description || 'A Greek Lower God.';
+                    deity.offerings = deity.offerings || '';
+                    deity.favors = deity.favors || '';
+                    deity.startingBoon = deity.startingBoon || '';
+                    deity.domain = deity.domain || 'Combat Archery, Barding, Music';
+                }
+                 if (deity.name === 'Artemis') {
+                    deity.description = deity.description || 'A Greek Lower God.';
+                    deity.domain = deity.domain || 'Hunting, Moon (via Yorick)';
+                }
+                if (deity.name === 'Osiris') {
+                    deity.description = deity.description || 'An Egyptian Overlord deity.';
+                    deity.domain = deity.domain || 'Necromantic magic';
+                }
+                if (deity.name === 'Odin') {
+                    deity.description = deity.description || 'The All-Knowing-Father, a god of wisdom, knowledge, and magic. He sacrificed much to gain knowledge of the cosmic forces, guiding humanity and the gods alike in matters of fate.';
+                    deity.domain = deity.domain || 'Rune magic, Teleportation';
+                }
+                if (deity.name === 'Loki') {
+                    deity.description = deity.description || 'A Norse Lower God.';
+                    deity.domain = deity.domain || 'Illusions';
+                }
+                if (deity.name === 'Morrigan') {
+                    deity.description = deity.description || 'A Celtic Lower God.';
+                    deity.domain = deity.domain || 'Hexblade / spellblade';
+                }
+                if (deity.name === 'Thor') {
+                    deity.description = deity.description || 'A Norse Lower God.';
+                    deity.domain = deity.domain || 'Physical augmentation';
+                }
+                if (deity.name === 'Hermes') {
+                    deity.description = deity.description || 'A Greek Lower God.';
+                    deity.domain = deity.domain || 'Communication, Trading';
+                }
+                if (deity.name === 'Ullr') {
+                    deity.description = deity.description || 'A Norse Lower God.';
+                    deity.domain = deity.domain || 'Survival';
+                }
+                if (deity.name === 'Poseidon') {
+                    deity.description = deity.description || 'A Greek Overlord deity.';
+                    deity.domain = deity.domain || 'Horse riding, Water (via Yamm)';
+                }
+                if (deity.name === 'Hephaestus') {
+                    deity.description = deity.description || 'A Greek Lower God.';
+                    deity.domain = deity.domain || 'Crafting';
+                }
+                if (deity.name === 'Pan') {
+                    deity.description = deity.description || 'A Greek Lower God.';
+                    deity.domain = deity.domain || 'Druid and nature';
+                }
+                if (deity.name === 'Isis') {
+                    deity.description = deity.description || 'An Egyptian Lower God.';
+                    deity.domain = deity.domain || 'Healing';
+                }
+                if (deity.name === 'Thoth') {
+                    deity.description = deity.description || 'An Egyptian Lower God.';
+                    deity.domain = deity.domain || 'Alchemy';
+                }
+                if (deity.name === 'Yamm') {
+                    deity.description = deity.description || 'The Cosmic/Primordial Deity embodying the ocean itself.';
+                    deity.domain = deity.domain || 'Water';
+                }
+                 if (deity.name === 'Agni') {
+                    deity.description = deity.description || 'A Hindu Lower God.';
+                    deity.domain = deity.domain || 'Fire';
+                }
+                 if (deity.name === 'Geb') {
+                    deity.description = deity.description || 'An Egyptian Lower God.';
+                    deity.domain = deity.domain || 'Earth';
+                }
+                 if (deity.name === 'Chronus') {
+                    deity.description = deity.description || 'The Cosmic/Primordial Deity embodying time itself.';
+                    deity.domain = deity.domain || 'Time';
+                }
+                if (deity.name === 'Shamann') {
+                    deity.description = deity.description || 'The Sun Itself, a radiant entity beaming with light and power. Shamann’s light provides strength to the Overlords and Gaia herself.';
+                    deity.domain = deity.domain || 'Sun (via Ra)';
+                }
+                if (deity.name === 'Yorick') {
+                    deity.description = deity.description || 'The Cosmic/Primordial Deity embodying the moon itself.';
+                    deity.domain = deity.domain || 'Moon (via Artemis)';
+                }
+                if (deity.name === 'Hypnos') {
+                    deity.description = deity.description || 'A Greek Overlord deity. Played a role in imprisoning Cthulhu.';
+                    deity.domain = deity.domain || 'Psychic';
+                }
+                if (deity.name === 'Nemesis') {
+                    deity.description = deity.description || 'A Greek Lower God.';
+                    deity.domain = deity.domain || 'Retribution';
+                }
+                if (deity.name === 'Dionysus') {
+                    deity.description = deity.description || 'A Greek Lower God.';
+                    deity.domain = deity.domain || 'Wine making';
+                }
+                if (deity.name === 'Demeter') {
+                    deity.description = deity.description || 'A Greek Lower God.';
+                    deity.domain = deity.domain || 'Agriculture';
+                }
+                if (deity.name === 'Dagan') {
+                    deity.description = deity.description || 'A Mesopotamian Lower God.';
+                    deity.domain = deity.domain || 'Agriculture';
+                }
+                if (deity.name === 'Hades') {
+                    deity.description = deity.description || 'A Greek Overlord deity.';
+                    deity.domain = deity.domain || 'Mining';
+                }
+                if (deity.name === 'Heracles') {
+                    deity.description = deity.description || 'A Greek Lower God.';
+                    deity.domain = deity.domain || 'Hand to hand combat';
+                }
+                 if (deity.name === 'Cthulhu') {
+                    deity.domain = deity.domain || 'Cosmic Horror, Corruption';
+                }
+            });
 
         });
     </script>
