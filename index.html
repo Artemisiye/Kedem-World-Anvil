@@ -6,13 +6,55 @@
     <title>Kedem: Interactive World Anvil</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Firebase CDN -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, query, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase configuration (provided by Canvas environment)
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let userId = null;
+        let isAuthReady = false;
+
+        // Authenticate and set up auth state listener
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+            } else {
+                if (initialAuthToken) {
+                    try {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        userId = auth.currentUser.uid;
+                    } catch (error) {
+                        console.error("Error signing in with custom token:", error);
+                        await signInAnonymously(auth); // Fallback to anonymous
+                        userId = auth.currentUser.uid;
+                    }
+                } else {
+                    await signInAnonymously(auth);
+                    userId = auth.currentUser.uid;
+                }
+            }
+            isAuthReady = true;
+            document.dispatchEvent(new CustomEvent('authReady', { detail: { userId: userId, db: db, auth: auth } }));
+        });
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chosen Palette: Warm Neutrals (Slate, Amber, Teal) -->
     <!-- Application Structure Plan: A responsive single-page application with a fixed sidebar for primary navigation and a dynamic main content area. This structure allows users to easily switch between core topics (World, Pantheon, Bestiary, Gameplay) without losing context. The key interaction is the "Pantheon Explorer," a filterable and searchable card grid, designed to make the large, complex hierarchy of deities manageable and easy to explore. This non-linear, thematic structure is more user-friendly for a GDD than a simple linear document, facilitating quick lookups and discovery of relationships between entities. -->
     <!-- Visualization & Content Choices: 
-        - Pantheon: Goal: Organize & Compare. Method: Interactive card grid with filters for rank/influence and a search bar. When a card is clicked, a modal displays detailed information about the deity. This handles the large dataset effectively and provides drill-down functionality. Library: Vanilla JS + Tailwind.
+        - Pantheon: Goal: Organize & Compare. Method: Interactive card grid with filters for rank/influence and a search bar. When a card is clicked, a modal displays detailed information about the deity, now with editable fields for in-session modification and *permanent saving to Firestore*. This handles the large dataset effectively and provides drill-down functionality. Library: Vanilla JS + Tailwind, Chart.js, Firestore.
         - Gameplay Progression: Goal: Show Change. Method: Clickable horizontal timeline. This visualizes the game's flow. Library: HTML/CSS + JS for interaction.
         - Player Attributes: Goal: Inform & Explain Relationships. Method: A dynamic HTML/CSS diagram instead of a simple chart, showing how core attributes like Vitality and Resilience contribute to Effective Health. This is more explanatory than a basic bar chart. Library: HTML/CSS + JS.
         - Factions (Humans, Goblins, etc.): Goal: Compare. Method: Side-by-side content cards to highlight differences. Library: Tailwind Grid.
@@ -110,9 +152,40 @@
         .modal-close-button:hover {
             color: #1e293b; /* slate-800 */
         }
+        .editable-field {
+            width: 100%;
+            padding: 0.5rem;
+            margin-top: 0.25rem;
+            border: 1px solid #cbd5e1; /* slate-300 */
+            border-radius: 0.375rem; /* rounded-md */
+        }
+        .editable-field:focus {
+            outline: none;
+            border-color: #fbbf24; /* amber-400 */
+            box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2); /* amber-400 with opacity */
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            font-size: 1.5rem;
+            color: #1e293b;
+        }
     </style>
 </head>
 <body class="antialiased">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        Loading data...
+    </div>
 
     <div class="flex h-screen bg-slate-50">
         <!-- Sidebar Navigation -->
@@ -127,6 +200,9 @@
                 <a href="#bestiary" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Bestiary</a>
                 <a href="#gameplay" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Gameplay & Mechanics</a>
             </nav>
+            <div class="p-4 text-xs text-slate-400 border-t border-slate-700">
+                User ID: <span id="user-id-display">Loading...</span>
+            </div>
         </aside>
 
         <!-- Main Content -->
@@ -275,79 +351,117 @@
     <div id="deity-modal" class="modal-overlay">
         <div class="modal-content">
             <button class="modal-close-button" id="deity-modal-close-button">&times;</button>
-            <h3 id="modal-deity-name" class="text-3xl font-bold text-slate-800 mb-3"></h3>
-            <p id="modal-deity-aliases" class="text-lg text-slate-500 italic mb-4"></p>
-            <div id="modal-deity-tags" class="flex flex-wrap gap-2 mb-4"></div>
-            <p id="modal-deity-description" class="text-base text-slate-600 leading-relaxed"></p>
-            <div id="modal-deity-additional" class="mt-4 space-y-2 text-base text-slate-700">
-                <!-- Additional structured details like offerings, favors, boons will go here -->
+            <div id="modal-view-mode">
+                <h3 id="modal-deity-name" class="text-3xl font-bold text-slate-800 mb-3"></h3>
+                <p id="modal-deity-aliases" class="text-lg text-slate-500 italic mb-4"></p>
+                <div id="modal-deity-tags" class="flex flex-wrap gap-2 mb-4"></div>
+                <p id="modal-deity-description" class="text-base text-slate-600 leading-relaxed"></p>
+                <div id="modal-deity-additional" class="mt-4 space-y-2 text-base text-slate-700">
+                    <!-- Additional structured details like offerings, favors, boons will go here -->
+                </div>
+                <div class="mt-6 flex justify-end">
+                    <button id="deity-modal-edit-button" class="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition shadow">Edit</button>
+                </div>
+            </div>
+
+            <div id="modal-edit-mode" class="hidden">
+                <h3 class="text-3xl font-bold text-slate-800 mb-3" id="edit-deity-name-display"></h3>
+                <label for="edit-deity-aliases" class="block text-sm font-medium text-slate-700 mt-2">Aliases:</label>
+                <input type="text" id="edit-deity-aliases" class="editable-field mb-2">
+
+                <label for="edit-deity-tags" class="block text-sm font-medium text-slate-700 mt-2">Tags (comma-separated):</label>
+                <input type="text" id="edit-deity-tags" class="editable-field mb-2">
+
+                <label for="edit-deity-description" class="block text-sm font-medium text-slate-700 mt-2">Description:</label>
+                <textarea id="edit-deity-description" rows="5" class="editable-field mb-2"></textarea>
+
+                <label for="edit-deity-offerings" class="block text-sm font-medium text-slate-700 mt-2">Offerings:</label>
+                <input type="text" id="edit-deity-offerings" class="editable-field mb-2">
+
+                <label for="edit-deity-favors" class="block text-sm font-medium text-slate-700 mt-2">Favors:</label>
+                <input type="text" id="edit-deity-favors" class="editable-field mb-2">
+
+                <label for="edit-deity-startingBoon" class="block text-sm font-medium text-slate-700 mt-2">Starting Boon (comma-separated):</label>
+                <input type="text" id="edit-deity-startingBoon" class="editable-field mb-2">
+
+                <label for="edit-deity-domain" class="block text-sm font-medium text-slate-700 mt-2">Domain:</label>
+                <input type="text" id="edit-deity-domain" class="editable-field mb-4">
+
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button id="deity-modal-cancel-button" class="bg-slate-300 text-slate-800 px-4 py-2 rounded-lg hover:bg-slate-400 transition shadow">Cancel</button>
+                    <button id="deity-modal-save-button" class="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition shadow">Save</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const deityData = [
-                { name: 'Azathoth', aliases: 'The Blind Idiot God, Chaos', tags: ['God/OuterGod'], description: 'The embodiment of chaos and destruction. A devouring black hole that seeks to bring the cosmos to its end. The mere presence of Azathoth warps space and time, threatening the existence of the Primordials.' },
-                { name: 'Chronus', aliases: 'The Time', tags: ['God/Primordial'], description: 'The Cosmic/Primordial Deity embodying time itself.' },
-                { name: 'Gaia', aliases: 'The Earth', tags: ['God/Primordial'], description: 'Gaia is the primordial embodiment of the living world—land, soil, root, and breath. She is not worshiped in temples like the Overlords, but her presence is felt in every forest, mountain, and heartbeat. All natural mana flows from Gaia, and it is through her that the cycle of life, death, and rebirth is maintained. She is vast, ancient, and mostly dormant. Humanoids were intended to serve her, but humans—born of Prometheus—are unique in that they are no longer tied to her cycle.' },
-                { name: 'Shamann', aliases: 'The Sun', tags: ['God/Primordial'], description: 'The Sun Itself, a radiant entity beaming with light and power. Shamann’s light provides strength to the Overlords and Gaia herself.' },
-                { name: 'Yamm', aliases: 'The Ocean', tags: ['God/Primordial'], description: 'The Cosmic/Primordial Deity embodying the ocean itself.' },
-                { name: 'Yorick', aliases: 'The Moon', tags: ['God/Primordial'], description: 'The Cosmic/Primordial Deity embodying the moon itself.' },
-                { name: 'Hades', aliases: '', tags: ['Influence/Greek', 'God/Overlord'], description: 'A Greek Overlord deity.' },
-                { name: 'Hypnos', aliases: '', tags: ['Influence/Greek', 'God/Overlord'], description: 'A Greek Overlord deity. Played a role in imprisoning Cthulhu.' },
-                { name: 'Odin', aliases: '', tags: ['Influence/Norse', 'God/Overlord'], description: 'The All-Knowing-Father, a god of wisdom, knowledge, and magic. He sacrificed much to gain knowledge of the cosmic forces, guiding humanity and the gods alike in matters of fate.' },
-                { name: 'Osiris', aliases: '', tags: ['Influence/Egyptian', 'God/Overlord'], description: 'An Egyptian Overlord deity. Associated with Necromantic magic.' },
-                { name: 'Poseidon', aliases: '', tags: ['Influence/Greek', 'God/Overlord'], description: 'A Greek Overlord deity. Associated with horse riding and channeling water.' },
-                { name: 'Ra', aliases: '', tags: ['Influence/Egyptian', 'God/Overlord'], description: 'The Sun Overlord, the god of science, light and order, who spins Gaia to brings the sun across the sky each day. Ra’s power is connected directly to Shamann, who\'s power is channeled through the sun temples.' },
-                { name: 'Zeus', aliases: 'General of the Gods', tags: ['Influence/Greek', 'God/Overlord'], description: 'Zeus is one of the Overlords, known as the General of the Gods, the lord of the sky and thunder. Zeus rules from his temple in Mount Olympus, governing the west of the continent and overseeing Cthulhu\'s prison.' },
-                { name: 'Agni', aliases: '', tags: ['Influence/Hindu', 'God/LowerGod'], description: 'A Hindu Lower God. Associated with Fire.' },
-                { name: 'Apollo', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Combat Archery, Barding, and music.' },
-                { name: 'Ares', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'God of War and Combat. Offerings: Offensive combat abilities, Melee stances. Favors: Offensive combat, Bloodshed, Duels. Starting Boon: Bloodthirsty Vision, Rare bloodthirsty spear.' },
-                { name: 'Artemis', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Hunting and the Moon (via Yorick).' },
-                { name: 'Athena', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'Goddess of War and Strategy. Offerings: Defensive combat abilities (parry), Target lock on Combat enhancing spells. Favors: Building communities. Starting Boon: Rare shield and sword.' },
-                { name: 'Brigid', aliases: '', tags: ['Influence/Celtic', 'God/LowerGod'], description: 'A Celtic Lower God. Associated with Animal handling.' },
-                { name: 'Dagan', aliases: '', tags: ['Influence/Mesopotamian', 'God/LowerGod'], description: 'A Mesopotamian Lower God. Associated with Agriculture.' },
-                { name: 'Demeter', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Agriculture.' },
-                { name: 'Dionysus', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Wine making.' },
-                { name: 'Geb', aliases: '', tags: ['Influence/Egyptian', 'God/LowerGod'], description: 'An Egyptian Lower God. Associated with Earth.' },
-                { name: 'Hephaestus', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Crafting.' },
-                { name: 'Heracles', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Hand-to-hand combat.' },
-                { name: 'Hermes', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Communication and Trading.' },
-                { name: 'Isis', aliases: '', tags: ['Influence/Egyptian', 'God/LowerGod'], description: 'An Egyptian Lower God. Associated with Healing.' },
-                { name: 'Loki', aliases: '', tags: ['Influence/Norse', 'God/LowerGod'], description: 'A Norse Lower God. Associated with Illusions.' },
-                { name: 'Morrigan', aliases: '', tags: ['Influence/Celtic', 'God/LowerGod'], description: 'A Celtic Lower God. Associated with Hexblade / spellblade.' },
-                { name: 'Nemesis', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Retribution.' },
-                { name: 'Pan', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Druid and nature.' },
-                { name: 'Thor', aliases: '', tags: ['Influence/Norse', 'God/LowerGod'], description: 'A Norse Lower God. Associated with Physical augmentation.' },
-                { name: 'Thoth', aliases: '', tags: ['Influence/Egyptian', 'God/LowerGod'], description: 'An Egyptian Lower God. Associated with Alchemy.' },
-                { name: 'Ullr', aliases: '', tags: ['Influence/Norse', 'God/LowerGod'], description: 'A Norse Lower God. Associated with Survival.' },
-                { name: 'Cthulhu', aliases: 'The Earth Dweller', tags: ['God/GreatOldOnes'], description: 'An enormous alien entity from beyond the solar system. A Great Old One, Cthulhu embodies cosmic horror and corruption, eternally imprisoned in The Dark Sea yet continuously influencing and corrupting the land.' },
-                { name: 'Nyarlathotep', aliases: 'Nyarlathotep', tags: ['God/GreatOldOnes'], description: 'The Crawling Chaos, a shape-shifting entity that represents deception, madness, and the decay of reality. A manipulator who arrived to infiltrate Gaia after Cthulhu was defeated and trapped.' },
-                { name: 'Ashmedai', aliases: 'The Demon King', tags: ['God/Devil'], description: 'Son of Azazel, and known as The Demon King.' },
-                { name: 'Azazel', aliases: 'Azael', tags: ['God/Devil'], description: 'The Deviant, a former Lower God who became a Devil.' },
-                { name: 'Ben Shahar', aliases: 'Hilel, Lucifer, The Lightbringer', tags: ['God/Devil'], description: 'Son of the moon (Yorick), fallen from the moon to the earth.' },
-                { name: 'Samael', aliases: 'Satan, The Creeping Death', tags: ['God/Devil'], description: 'An enigmatic god, perhaps the primordial Death Itself.' },
-            ];
+            let deityData = []; // This will now be populated from Firestore
 
             const deityGrid = document.getElementById('deity-grid');
             const searchInput = document.getElementById('deity-search');
             const rankFiltersContainer = document.getElementById('rank-filters');
             const navLinks = document.querySelectorAll('.nav-link');
             const contentSections = document.querySelectorAll('.content-section');
+            const userIdDisplay = document.getElementById('user-id-display');
+            const loadingOverlay = document.getElementById('loading-overlay');
 
             const deityModal = document.getElementById('deity-modal');
             const deityModalCloseButton = document.getElementById('deity-modal-close-button');
+            const modalViewMode = document.getElementById('modal-view-mode');
+            const modalEditMode = document.getElementById('modal-edit-mode');
+            
             const modalDeityName = document.getElementById('modal-deity-name');
             const modalDeityAliases = document.getElementById('modal-deity-aliases');
             const modalDeityTags = document.getElementById('modal-deity-tags');
             const modalDeityDescription = document.getElementById('modal-deity-description');
             const modalDeityAdditional = document.getElementById('modal-deity-additional');
+            
+            const deityModalEditButton = document.getElementById('deity-modal-edit-button');
+            const deityModalSaveButton = document.getElementById('deity-modal-save-button');
+            const deityModalCancelButton = document.getElementById('deity-modal-cancel-button');
 
+            const editDeityNameDisplay = document.getElementById('edit-deity-name-display');
+            const editDeityAliases = document.getElementById('edit-deity-aliases');
+            const editDeityTags = document.getElementById('edit-deity-tags');
+            const editDeityDescription = document.getElementById('edit-deity-description');
+            const editDeityOfferings = document.getElementById('edit-deity-offerings');
+            const editDeityFavors = document.getElementById('edit-deity-favors');
+            const editDeityStartingBoon = document.getElementById('edit-deity-startingBoon');
+            const editDeityDomain = document.getElementById('edit-deity-domain');
 
             let activeRankFilter = 'All';
+            let currentDeityDocId = null; // Store Firestore document ID for saving
+
+            // Firebase related variables (declared in the module script in head)
+            let db;
+            let currentUserId;
+            const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+            document.addEventListener('authReady', async (event) => {
+                db = event.detail.db;
+                currentUserId = event.detail.userId;
+                userIdDisplay.textContent = currentUserId;
+                
+                loadingOverlay.classList.remove('hidden'); // Show loading
+
+                const deitiesColRef = collection(db, `artifacts/${APP_ID}/public/data/deities`);
+                onSnapshot(deitiesColRef, (snapshot) => {
+                    deityData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    // Ensure core descriptions/domains are present if not in Firestore
+                    populateDefaultDeityDetails();
+                    setupFilters(); // Re-setup filters in case new ranks are added
+                    renderDeities();
+                    loadingOverlay.classList.add('hidden'); // Hide loading
+                }, (error) => {
+                    console.error("Error fetching deities:", error);
+                    loadingOverlay.classList.add('hidden'); // Hide loading on error
+                });
+            });
 
             const getRank = (tags) => {
+                if (!tags) return 'Other';
                 if (tags.includes('God/Primordial')) return 'Primordial';
                 if (tags.includes('God/Overlord')) return 'Overlord';
                 if (tags.includes('God/LowerGod')) return 'Lower God';
@@ -375,7 +489,7 @@
                 deityGrid.innerHTML = '';
 
                 const filteredDeities = deityData.filter(deity => {
-                    const matchesSearch = deity.name.toLowerCase().includes(searchTerm) || deity.aliases.toLowerCase().includes(searchTerm);
+                    const matchesSearch = deity.name.toLowerCase().includes(searchTerm) || (deity.aliases && deity.aliases.toLowerCase().includes(searchTerm));
                     const matchesRank = activeRankFilter === 'All' || getRank(deity.tags) === activeRankFilter;
                     return matchesSearch && matchesRank;
                 });
@@ -407,12 +521,14 @@
             }
 
             function openDeityModal(deity) {
+                currentDeityDocId = deity.id; // Store Firestore document ID
+                
                 modalDeityName.textContent = deity.name;
                 modalDeityAliases.textContent = deity.aliases || '';
                 modalDeityDescription.textContent = deity.description || 'No description available.';
                 
                 modalDeityTags.innerHTML = '';
-                deity.tags.forEach(tag => {
+                (deity.tags || []).forEach(tag => {
                     const tagSpan = document.createElement('span');
                     tagSpan.className = `text-xs font-semibold px-2 py-1 rounded-full ${getTagColor(getRank(deity.tags))}`; // Use getRank for consistent colors
                     tagSpan.textContent = tag;
@@ -438,13 +554,61 @@
                 if (deity.domain) {
                     modalDeityAdditional.innerHTML += `<p><b class="font-semibold">Domain</b>: ${deity.domain}</p>`;
                 }
+                
+                // Set values for edit fields (hidden until edit mode)
+                editDeityNameDisplay.textContent = deity.name; // Name is display-only in edit mode
+                editDeityAliases.value = deity.aliases || '';
+                editDeityTags.value = (deity.tags || []).join(', ');
+                editDeityDescription.value = deity.description || '';
+                editDeityOfferings.value = deity.offerings || '';
+                editDeityFavors.value = deity.favors || '';
+                editDeityStartingBoon.value = Array.isArray(deity.startingBoon) ? deity.startingBoon.join(', ') : (deity.startingBoon || '');
+                editDeityDomain.value = deity.domain || '';
 
-
+                modalViewMode.classList.remove('hidden');
+                modalEditMode.classList.add('hidden');
                 deityModal.classList.add('open');
             }
 
             function closeDeityModal() {
                 deityModal.classList.remove('open');
+                currentDeityDocId = null; // Reset doc ID
+            }
+
+            function toggleEditMode() {
+                modalViewMode.classList.toggle('hidden');
+                modalEditMode.classList.toggle('hidden');
+            }
+
+            async function saveDeityChanges() {
+                if (!db || !currentUserId) {
+                    console.error("Firestore not initialized or user not authenticated.");
+                    return;
+                }
+                if (currentDeityDocId) {
+                    loadingOverlay.classList.remove('hidden'); // Show loading
+                    try {
+                        const deityRef = doc(db, `artifacts/${APP_ID}/public/data/deities`, currentDeityDocId);
+                        await setDoc(deityRef, {
+                            name: editDeityNameDisplay.textContent, // Name is not editable via input
+                            aliases: editDeityAliases.value,
+                            tags: editDeityTags.value.split(',').map(tag => tag.trim()).filter(tag => tag),
+                            description: editDeityDescription.value,
+                            offerings: editDeityOfferings.value,
+                            favors: editDeityFavors.value,
+                            startingBoon: editDeityStartingBoon.value.split(',').map(item => item.trim()).filter(item => item),
+                            domain: editDeityDomain.value,
+                        }, { merge: true }); // Use merge to only update specified fields
+
+                        console.log("Deity updated successfully!");
+                        closeDeityModal();
+                    } catch (error) {
+                        console.error("Error updating deity:", error);
+                        // You could add a more user-friendly error message here
+                    } finally {
+                        loadingOverlay.classList.add('hidden'); // Hide loading
+                    }
+                }
             }
 
             deityModalCloseButton.addEventListener('click', closeDeityModal);
@@ -454,8 +618,14 @@
                 }
             });
 
+            deityModalEditButton.addEventListener('click', toggleEditMode);
+            deityModalSaveButton.addEventListener('click', saveDeityChanges);
+            deityModalCancelButton.addEventListener('click', toggleEditMode); // Just switch back to view mode
+
+
             function setupFilters() {
-                const ranks = ['All', ...new Set(deityData.map(d => getRank(d.tags)))];
+                rankFiltersContainer.innerHTML = ''; // Clear existing filters
+                const ranks = ['All', ...new Set(deityData.map(d => getRank(d.tags)))].sort(); // Sort for consistency
                 ranks.forEach(rank => {
                     const button = document.createElement('button');
                     button.textContent = rank;
@@ -541,7 +711,7 @@
                                             'Health': 'Base HP. Increased by armor.',
                                             'Resilience': 'Determines HP value of Vitality. Base 100.',
                                             'Endurance (Max Energy)': 'Trainable. Increases max energy pool.',
-                                            'Stamina (Energy Regen)': 'Trainable. Increases energy recovery rate.'
+                                            'Stamina': 'Trainable. Increases energy recovery rate.'
                                         };
                                         return descriptions[context.label];
                                     }
@@ -569,144 +739,116 @@
                 });
             }
 
-            // Initial setup
+            // Fallback for initial deity data if Firestore is slow or empty
+            const initialDeityDataFallback = [
+                { name: 'Azathoth', aliases: 'The Blind Idiot God, Chaos', tags: ['God/OuterGod'], description: 'The embodiment of chaos and destruction. A devouring black hole that seeks to bring the cosmos to its end. The mere presence of Azathoth warps space and time, threatening the existence of the Primordials.' },
+                { name: 'Chronus', aliases: 'The Time', tags: ['God/Primordial'], description: 'The Cosmic/Primordial Deity embodying time itself.' },
+                { name: 'Gaia', aliases: 'The Earth', tags: ['God/Primordial'], description: 'Gaia is the primordial embodiment of the living world—land, soil, root, and breath. She is not worshiped in temples like the Overlords, but her presence is felt in every forest, mountain, and heartbeat. All natural mana flows from Gaia, and it is through her that the cycle of life, death, and rebirth is maintained. She is vast, ancient, and mostly dormant. Humanoids were intended to serve her, but humans—born of Prometheus—are unique in that they are no longer tied to her cycle.' },
+                { name: 'Shamann', aliases: 'The Sun', tags: ['God/Primordial'], description: 'The Sun Itself, a radiant entity beaming with light and power. Shamann’s light provides strength to the Overlords and Gaia herself.' },
+                { name: 'Yamm', aliases: 'The Ocean', tags: ['God/Primordial'], description: 'The Cosmic/Primordial Deity embodying the ocean itself.' },
+                { name: 'Yorick', aliases: 'The Moon', tags: ['God/Primordial'], description: 'The Cosmic/Primordial Deity embodying the moon itself.' },
+                { name: 'Hades', aliases: '', tags: ['Influence/Greek', 'God/Overlord'], description: 'A Greek Overlord deity.' },
+                { name: 'Hypnos', aliases: '', tags: ['Influence/Greek', 'God/Overlord'], description: 'A Greek Overlord deity. Played a role in imprisoning Cthulhu.' },
+                { name: 'Odin', aliases: '', tags: ['Influence/Norse', 'God/Overlord'], description: 'The All-Knowing-Father, a god of wisdom, knowledge, and magic. He sacrificed much to gain knowledge of the cosmic forces, guiding humanity and the gods alike in matters of fate.' },
+                { name: 'Osiris', aliases: '', tags: ['Influence/Egyptian', 'God/Overlord'], description: 'An Egyptian Overlord deity. Associated with Necromantic magic.' },
+                { name: 'Poseidon', aliases: '', tags: ['Influence/Greek', 'God/Overlord'], description: 'A Greek Overlord deity. Associated with horse riding and channeling water.' },
+                { name: 'Ra', aliases: '', tags: ['Influence/Egyptian', 'God/Overlord'], description: 'The Sun Overlord, the god of science, light and order, who spins Gaia to brings the sun across the sky each day. Ra’s power is connected directly to Shamann, who\'s power is channeled through the sun temples.' },
+                { name: 'Zeus', aliases: 'General of the Gods', tags: ['Influence/Greek', 'God/Overlord'], description: 'Zeus is one of the Overlords, known as the General of the Gods, the lord of the sky and thunder. Zeus rules from his temple in Mount Olympus, governing the west of the continent and overseeing Cthulhu\'s prison.' },
+                { name: 'Agni', aliases: '', tags: ['Influence/Hindu', 'God/LowerGod'], description: 'A Hindu Lower God. Associated with Fire.' },
+                { name: 'Apollo', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Combat Archery, Barding, and music.' },
+                { name: 'Ares', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'God of War and Combat. Offerings: Offensive combat abilities, Melee stances. Favors: Offensive combat, Bloodshed, Duels. Starting Boon: Bloodthirsty Vision, Rare bloodthirsty spear.' },
+                { name: 'Artemis', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Hunting and the Moon (via Yorick).' },
+                { name: 'Athena', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'Goddess of War and Strategy. Offerings: Defensive combat abilities (parry), Target lock on Combat enhancing spells. Favors: Building communities. Starting Boon: Rare shield and sword.' },
+                { name: 'Brigid', aliases: '', tags: ['Influence/Celtic', 'God/LowerGod'], description: 'A Celtic Lower God. Associated with Animal handling.' },
+                { name: 'Dagan', aliases: '', tags: ['Influence/Mesopotamian', 'God/LowerGod'], description: 'A Mesopotamian Lower God. Associated with Agriculture.' },
+                { name: 'Demeter', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Agriculture.' },
+                { name: 'Dionysus', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Wine making.' },
+                { name: 'Geb', aliases: '', tags: ['Influence/Egyptian', 'God/LowerGod'], description: 'An Egyptian Lower God. Associated with Earth.' },
+                { name: 'Hephaestus', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Crafting.' },
+                { name: 'Heracles', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Hand-to-hand combat.' },
+                { name: 'Hermes', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Communication and Trading.' },
+                { name: 'Isis', aliases: '', tags: ['Influence/Egyptian', 'God/LowerGod'], description: 'An Egyptian Lower God. Associated with Healing.' },
+                { name: 'Loki', aliases: '', tags: ['Influence/Norse', 'God/LowerGod'], description: 'A Norse Lower God. Associated with Illusions.' },
+                { name: 'Morrigan', aliases: '', tags: ['Influence/Celtic', 'God/LowerGod'], description: 'A Celtic Lower God. Associated with Hexblade / spellblade.' },
+                { name: 'Nemesis', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Retribution.' },
+                { name: 'Pan', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Associated with Druid and nature.' },
+                { name: 'Thor', aliases: '', tags: ['Influence/Norse', 'God/LowerGod'], description: 'A Norse Lower God. Associated with Physical augmentation.' },
+                { name: 'Thoth', aliases: '', tags: ['Influence/Egyptian', 'God/LowerGod'], description: 'An Egyptian Lower God. Associated with Alchemy.' },
+                { name: 'Ullr', aliases: '', tags: ['Influence/Norse', 'God/LowerGod'], description: 'A Norse Lower God. Associated with Survival.' },
+                { name: 'Cthulhu', aliases: 'The Earth Dweller', tags: ['God/GreatOldOnes'], description: 'An enormous alien entity from beyond the solar system. A Great Old One, Cthulhu embodies cosmic horror and corruption, eternally imprisoned in The Dark Sea yet continuously influencing and corrupting the land.' },
+                { name: 'Nyarlathotep', aliases: 'Nyarlathotep', tags: ['God/GreatOldOnes'], description: 'The Crawling Chaos, a shape-shifting entity that represents deception, madness, and the decay of reality. A manipulator who arrived to infiltrate Gaia after Cthulhu was defeated and trapped.' },
+                { name: 'Ashmedai', aliases: 'The Demon King', tags: ['God/Devil'], description: 'Son of Azazel, and known as The Demon King.' },
+                { name: 'Azazel', aliases: 'Azael', tags: ['God/Devil'], description: 'The Deviant, a former Lower God who became a Devil.' },
+                { name: 'Ben Shahar', aliases: 'Hilel, Lucifer, The Lightbringer', tags: ['God/Devil'], description: 'Son of the moon (Yorick), fallen from the moon to the earth.' },
+                { name: 'Samael', aliases: 'Satan, The Creeping Death', tags: ['God/Devil'], description: 'An enigmatic god, perhaps the primordial Death Itself.' },
+            ];
+
+            // Function to ensure common deity details are present (for initial population or if Firestore is missing data)
+            function populateDefaultDeityDetails() {
+                const defaultDetails = {
+                    'Apollo': { domain: 'Combat Archery, Barding, Music' },
+                    'Artemis': { domain: 'Hunting, Moon (via Yorick)' },
+                    'Osiris': { domain: 'Necromantic magic' },
+                    'Odin': { domain: 'Rune magic, Teleportation' },
+                    'Loki': { domain: 'Illusions' },
+                    'Morrigan': { domain: 'Hexblade / spellblade' },
+                    'Thor': { domain: 'Physical augmentation' },
+                    'Hermes': { domain: 'Communication, Trading' },
+                    'Ullr': { domain: 'Survival' },
+                    'Poseidon': { domain: 'Horse riding, Water (via Yamm)' },
+                    'Hephaestus': { domain: 'Crafting' },
+                    'Pan': { domain: 'Druid and nature' },
+                    'Isis': { domain: 'Healing' },
+                    'Thoth': { domain: 'Alchemy' },
+                    'Yamm': { domain: 'Water' },
+                    'Agni': { domain: 'Fire' },
+                    'Geb': { domain: 'Earth' },
+                    'Chronus': { domain: 'Time' },
+                    'Shamann': { domain: 'Sun (via Ra)' },
+                    'Yorick': { domain: 'Moon (via Artemis)' },
+                    'Hypnos': { domain: 'Psychic' },
+                    'Nemesis': { domain: 'Retribution' },
+                    'Dionysus': { domain: 'Wine making' },
+                    'Demeter': { domain: 'Agriculture' },
+                    'Dagan': { domain: 'Agriculture' },
+                    'Hades': { domain: 'Mining' },
+                    'Heracles': { domain: 'Hand to hand combat' },
+                    'Cthulhu': { domain: 'Cosmic Horror, Corruption' }
+                };
+
+                // Add or merge default details into fetched deityData
+                initialDeityDataFallback.forEach(fallbackDeity => {
+                    const existingDeity = deityData.find(d => d.name === fallbackDeity.name);
+                    if (!existingDeity) {
+                        // If deity is not in Firestore, add it with default values
+                        deityData.push(fallbackDeity);
+                    } else {
+                        // Merge default details into existing Firestore data if fields are missing
+                        Object.keys(defaultDetails[fallbackDeity.name] || {}).forEach(key => {
+                            if (existingDeity[key] === undefined || existingDeity[key] === '') {
+                                existingDeity[key] = defaultDetails[fallbackDeity.name][key];
+                            }
+                        });
+                        // Ensure description exists
+                        if (!existingDeity.description) {
+                            existingDeity.description = fallbackDeity.description;
+                        }
+                    }
+                });
+            }
+
+
+            // Initial setup outside of authReady to allow UI elements to be responsive
             searchInput.addEventListener('input', renderDeities);
-            setupFilters();
-            renderDeities();
-            
             navLinks.forEach(link => {
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
                     window.location.hash = link.getAttribute('href');
                 });
             });
-            
             window.addEventListener('hashchange', () => handleNavigation(window.location.hash));
-            
-            // Initial load
             handleNavigation(window.location.hash);
             setupAttributesChart();
-
-            // Populate deityData descriptions and other fields
-            // The descriptions from the prior canvas were already in the JS deityData array
-            // Adding a few more details from the gameplay domains notes directly here for completeness
-            // This is how you would add more structured data for a deity if it wasn't already in the description string
-            deityData.forEach(deity => {
-                if (deity.name === 'Apollo') {
-                    deity.description = deity.description || 'A Greek Lower God.';
-                    deity.offerings = deity.offerings || '';
-                    deity.favors = deity.favors || '';
-                    deity.startingBoon = deity.startingBoon || '';
-                    deity.domain = deity.domain || 'Combat Archery, Barding, Music';
-                }
-                 if (deity.name === 'Artemis') {
-                    deity.description = deity.description || 'A Greek Lower God.';
-                    deity.domain = deity.domain || 'Hunting, Moon (via Yorick)';
-                }
-                if (deity.name === 'Osiris') {
-                    deity.description = deity.description || 'An Egyptian Overlord deity.';
-                    deity.domain = deity.domain || 'Necromantic magic';
-                }
-                if (deity.name === 'Odin') {
-                    deity.description = deity.description || 'The All-Knowing-Father, a god of wisdom, knowledge, and magic. He sacrificed much to gain knowledge of the cosmic forces, guiding humanity and the gods alike in matters of fate.';
-                    deity.domain = deity.domain || 'Rune magic, Teleportation';
-                }
-                if (deity.name === 'Loki') {
-                    deity.description = deity.description || 'A Norse Lower God.';
-                    deity.domain = deity.domain || 'Illusions';
-                }
-                if (deity.name === 'Morrigan') {
-                    deity.description = deity.description || 'A Celtic Lower God.';
-                    deity.domain = deity.domain || 'Hexblade / spellblade';
-                }
-                if (deity.name === 'Thor') {
-                    deity.description = deity.description || 'A Norse Lower God.';
-                    deity.domain = deity.domain || 'Physical augmentation';
-                }
-                if (deity.name === 'Hermes') {
-                    deity.description = deity.description || 'A Greek Lower God.';
-                    deity.domain = deity.domain || 'Communication, Trading';
-                }
-                if (deity.name === 'Ullr') {
-                    deity.description = deity.description || 'A Norse Lower God.';
-                    deity.domain = deity.domain || 'Survival';
-                }
-                if (deity.name === 'Poseidon') {
-                    deity.description = deity.description || 'A Greek Overlord deity.';
-                    deity.domain = deity.domain || 'Horse riding, Water (via Yamm)';
-                }
-                if (deity.name === 'Hephaestus') {
-                    deity.description = deity.description || 'A Greek Lower God.';
-                    deity.domain = deity.domain || 'Crafting';
-                }
-                if (deity.name === 'Pan') {
-                    deity.description = deity.description || 'A Greek Lower God.';
-                    deity.domain = deity.domain || 'Druid and nature';
-                }
-                if (deity.name === 'Isis') {
-                    deity.description = deity.description || 'An Egyptian Lower God.';
-                    deity.domain = deity.domain || 'Healing';
-                }
-                if (deity.name === 'Thoth') {
-                    deity.description = deity.description || 'An Egyptian Lower God.';
-                    deity.domain = deity.domain || 'Alchemy';
-                }
-                if (deity.name === 'Yamm') {
-                    deity.description = deity.description || 'The Cosmic/Primordial Deity embodying the ocean itself.';
-                    deity.domain = deity.domain || 'Water';
-                }
-                 if (deity.name === 'Agni') {
-                    deity.description = deity.description || 'A Hindu Lower God.';
-                    deity.domain = deity.domain || 'Fire';
-                }
-                 if (deity.name === 'Geb') {
-                    deity.description = deity.description || 'An Egyptian Lower God.';
-                    deity.domain = deity.domain || 'Earth';
-                }
-                 if (deity.name === 'Chronus') {
-                    deity.description = deity.description || 'The Cosmic/Primordial Deity embodying time itself.';
-                    deity.domain = deity.domain || 'Time';
-                }
-                if (deity.name === 'Shamann') {
-                    deity.description = deity.description || 'The Sun Itself, a radiant entity beaming with light and power. Shamann’s light provides strength to the Overlords and Gaia herself.';
-                    deity.domain = deity.domain || 'Sun (via Ra)';
-                }
-                if (deity.name === 'Yorick') {
-                    deity.description = deity.description || 'The Cosmic/Primordial Deity embodying the moon itself.';
-                    deity.domain = deity.domain || 'Moon (via Artemis)';
-                }
-                if (deity.name === 'Hypnos') {
-                    deity.description = deity.description || 'A Greek Overlord deity. Played a role in imprisoning Cthulhu.';
-                    deity.domain = deity.domain || 'Psychic';
-                }
-                if (deity.name === 'Nemesis') {
-                    deity.description = deity.description || 'A Greek Lower God.';
-                    deity.domain = deity.domain || 'Retribution';
-                }
-                if (deity.name === 'Dionysus') {
-                    deity.description = deity.description || 'A Greek Lower God.';
-                    deity.domain = deity.domain || 'Wine making';
-                }
-                if (deity.name === 'Demeter') {
-                    deity.description = deity.description || 'A Greek Lower God.';
-                    deity.domain = deity.domain || 'Agriculture';
-                }
-                if (deity.name === 'Dagan') {
-                    deity.description = deity.description || 'A Mesopotamian Lower God.';
-                    deity.domain = deity.domain || 'Agriculture';
-                }
-                if (deity.name === 'Hades') {
-                    deity.description = deity.description || 'A Greek Overlord deity.';
-                    deity.domain = deity.domain || 'Mining';
-                }
-                if (deity.name === 'Heracles') {
-                    deity.description = deity.description || 'A Greek Lower God.';
-                    deity.domain = deity.domain || 'Hand to hand combat';
-                }
-                 if (deity.name === 'Cthulhu') {
-                    deity.domain = deity.domain || 'Cosmic Horror, Corruption';
-                }
-            });
 
         });
     </script>
