@@ -447,18 +447,44 @@
                 loadingOverlay.classList.remove('hidden'); // Show loading
 
                 const deitiesColRef = collection(db, `artifacts/${APP_ID}/public/data/deities`);
-                onSnapshot(deitiesColRef, (snapshot) => {
+                onSnapshot(deitiesColRef, async (snapshot) => { // Make this callback async
                     deityData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    // Ensure core descriptions/domains are present if not in Firestore
-                    populateDefaultDeityDetails();
-                    setupFilters(); // Re-setup filters in case new ranks are added
-                    renderDeities();
+
+                    // If the collection is empty, seed it with initial data
+                    if (deityData.length === 0 && snapshot.empty) {
+                        console.log("Firestore collection is empty, seeding with initial data...");
+                        await seedFirestoreWithInitialData(); // Wait for seeding to complete
+                        // After seeding, data will be re-fetched by onSnapshot, so no need to render here
+                    } else {
+                        // Otherwise, populate default details and render normally
+                        populateDefaultDeityDetails(); 
+                        setupFilters(); 
+                        renderDeities();
+                    }
                     loadingOverlay.classList.add('hidden'); // Hide loading
                 }, (error) => {
                     console.error("Error fetching deities:", error);
                     loadingOverlay.classList.add('hidden'); // Hide loading on error
                 });
             });
+
+            // New function to seed the database with initial data
+            async function seedFirestoreWithInitialData() {
+                if (!db) {
+                    console.error("Firestore not initialized for seeding.");
+                    return;
+                }
+                const deitiesColRef = collection(db, `artifacts/${APP_ID}/public/data/deities`);
+                for (const deity of initialDeityDataFallback) { // Use fallback data for initial population
+                    try {
+                        // Use deity.name as the document ID for easier lookup and to prevent duplicates by name
+                        await setDoc(doc(deitiesColRef, deity.name), deity);
+                    } catch (error) {
+                        console.error(`Error seeding deity ${deity.name}:`, error);
+                    }
+                }
+                console.log("Initial deity data seeding complete.");
+            }
 
             const getRank = (tags) => {
                 if (!tags) return 'Other';
@@ -817,22 +843,25 @@
                 };
 
                 // Add or merge default details into fetched deityData
-                initialDeityDataFallback.forEach(fallbackDeity => {
-                    const existingDeity = deityData.find(d => d.name === fallbackDeity.name);
-                    if (!existingDeity) {
-                        // If deity is not in Firestore, add it with default values
-                        deityData.push(fallbackDeity);
-                    } else {
-                        // Merge default details into existing Firestore data if fields are missing
-                        Object.keys(defaultDetails[fallbackDeity.name] || {}).forEach(key => {
-                            if (existingDeity[key] === undefined || existingDeity[key] === '') {
-                                existingDeity[key] = defaultDetails[fallbackDeity.name][key];
+                deityData.forEach(deity => { // Iterate over the *actual* deityData (from Firestore)
+                    const name = deity.name;
+                    if (defaultDetails[name]) {
+                        Object.keys(defaultDetails[name]).forEach(key => {
+                            if (deity[key] === undefined || deity[key] === null || deity[key] === '') {
+                                deity[key] = defaultDetails[name][key];
                             }
                         });
-                        // Ensure description exists
-                        if (!existingDeity.description) {
-                            existingDeity.description = fallbackDeity.description;
+                    }
+                    // Ensure description exists
+                    if (!deity.description) {
+                        const fallbackItem = initialDeityDataFallback.find(item => item.name === name);
+                        if (fallbackItem) {
+                            deity.description = fallbackItem.description;
                         }
+                    }
+                    // Ensure tags is an array if not provided or empty
+                    if (!deity.tags || !Array.isArray(deity.tags) || deity.tags.length === 0) {
+                        deity.tags = ['Other']; // Default tag
                     }
                 });
             }
