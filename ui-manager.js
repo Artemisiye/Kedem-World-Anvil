@@ -1,16 +1,15 @@
 // ui-manager.js
 import { db, currentUserId, auth, signInUser, signOutUser } from './firebase-init.js'; 
 import { initializeDeityManager } from './deity-manager.js'; 
-import { setupNoteLibrary, fetchAndDisplayNote } from './note-library-manager.js'; // Renamed import
-import { noteFiles } from './data-constants.js'; // Renamed import
+import { setupNoteLibrary, fetchAndDisplayNote } from './note-library-manager.js'; 
+import { noteFiles } from './data-constants.js'; 
 
 // Declare UI elements globally within the module scope for accessibility
 const navLinks = document.querySelectorAll('.nav-link');
 const contentSections = document.querySelectorAll('.content-section');
 const loadingOverlay = document.getElementById('loading-overlay');
-const noteTitle = document.getElementById('note-title');
-const noteContent = document.getElementById('note-content');
-const noteList = document.getElementById('note-list'); 
+// Removed: noteTitle, noteContent, noteList declarations from here
+// These will now be retrieved directly within handleNavigation for specific use
 
 // New UI elements for login/logout (created once and appended)
 const authControlsContainer = document.createElement('div');
@@ -112,6 +111,7 @@ export function setupUI() {
     handleNavigation(window.location.hash); 
 
     setupAttributesChart();
+    // Call setupNoteLibrary, it will now retrieve its own elements
     setupNoteLibrary(loadingOverlay); 
 }
 
@@ -125,29 +125,35 @@ function handleNavigation(hash) {
     if (hash.startsWith('#note-library')) { // Check for base #note-library as well
         const filePathFromHash = hash.substring('#note-library:'.length);
         document.querySelector('a[href="#note-library"]').classList.add('active'); // Activate Note Library nav link
-        document.getElementById('note-library').classList.add('active'); // Activate Note Library section (by ID)
+        document.getElementById('notes-library').classList.add('active'); // Activate Notes Library section (ID is 'notes-library')
         
         let fileToDisplay = filePathFromHash;
-        // Logic to display the first note if no specific file is requested or if the path is invalid
-        if (filePathFromHash === '' || filePathFromHash === 'note-library' || !noteFiles.includes(filePathFromHash)) { // Renamed noteFiles
-            if (noteFiles.length > 0) { // Renamed noteFiles
+        // Get the note display elements here, as they are guaranteed to exist now (after DOMContentLoaded)
+        const currentNoteTitle = document.getElementById('note-title'); // Corrected ID reference
+        const currentNoteContent = document.getElementById('note-content'); // Corrected ID reference
+        const currentNoteList = document.getElementById('notes-list'); // Corrected ID reference
+
+        if (filePathFromHash === '' || filePathFromHash === 'note-library' || !noteFiles.includes(filePathFromHash)) { 
+            if (noteFiles.length > 0) { 
                 fileToDisplay = noteFiles[0]; // Display the first note by default
             } else {
                 console.warn("No notes available in noteFiles array to display.");
-                noteTitle.textContent = "No Notes Available"; // Use renamed variable
-                noteContent.innerHTML = "<p>The note library is empty or could not be loaded.</p>"; // Use renamed variable
+                if (currentNoteTitle) currentNoteTitle.textContent = "No Notes Available"; // Use corrected variable
+                if (currentNoteContent) currentNoteContent.innerHTML = "<p>The note library is empty or could not be loaded.</p>"; // Use corrected variable
                 loadingOverlay.classList.add('hidden');
                 return; // Exit if no files to display
             }
         }
         
-        // Pass noteTitle, noteContent to the fetch function directly
-        fetchAndDisplayNote(fileToDisplay, loadingOverlay, noteTitle, noteContent); // Renamed function and variables
+        // Pass the retrieved elements to the fetch function
+        fetchAndDisplayNote(fileToDisplay, loadingOverlay, currentNoteTitle, currentNoteContent); 
         
-        document.querySelectorAll('#note-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold')); // Renamed ID
-        const correspondingLink = document.querySelector(`#note-list a[data-filepath-raw="${fileToDisplay}"]`); // Renamed ID
-        if (correspondingLink) {
-            correspondingLink.classList.add('bg-slate-300', 'font-semibold');
+        if (currentNoteList) {
+            currentNoteList.querySelectorAll('a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold')); 
+            const correspondingLink = currentNoteList.querySelector(`a[data-filepath-raw="${fileToDisplay}"]`); 
+            if (correspondingLink) {
+                correspondingLink.classList.add('bg-slate-300', 'font-semibold');
+            }
         }
 
     } else {
