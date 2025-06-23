@@ -108,7 +108,7 @@ function setupGlobalNav(currentPage) {
 
             // Handle internal SPA navigation for explorer.html
             if (link.getAttribute('href').startsWith('explorer.html#') &&
-                (currentPageName === 'explorer.html' || currentPageName === '')) {
+                (currentPageName === 'explorer.html' || currentPageName === '') ) {
                 e.preventDefault();
                 window.location.hash = link.getAttribute('href').split('#')[1];
             }
@@ -289,7 +289,7 @@ function initNoteLibraryPage() {
     function handleNoteLibraryNavigation(hash) {
         let filePathFromHash = '';
         if (hash.startsWith('#note-library:')) {
-            filePathFromHash = decodeURIComponent(hash.substring('#note-library:'.length));
+            filePathFromHash = decodeURIComponent(hash.substring('#note-library:'.length)); // Decode URI component
         }
 
         let fileToDisplay = filePathFromHash;
@@ -309,20 +309,26 @@ function initNoteLibraryPage() {
 
         if (noteListElement) {
             noteListElement.querySelectorAll('.note-list-item-link').forEach(el => el.classList.remove('active-note'));
+            // Remove active class from folder toggles as well
+            noteListElement.querySelectorAll('.note-list-folder-toggle').forEach(el => el.classList.remove('active-note'));
+
             const correspondingLink = noteListElement.querySelector(`a[data-filepath-raw="${fileToDisplay}"]`);
             if (correspondingLink) {
                 correspondingLink.classList.add('active-note');
-                let parentUl = correspondingLink.closest('ul');
+                let parentUl = correspondingLink.closest('.folder-item-sub-list'); // Target the nested UL with the indent
                 // Traverse up to show parent folders if they are hidden
                 while (parentUl && !parentUl.classList.contains('root-ul')) {
                     if (parentUl.classList.contains('hidden')) {
                         parentUl.classList.remove('hidden');
-                        const folderToggle = parentUl.previousElementSibling;
-                        if (folderToggle && folderToggle.classList.contains('note-list-folder-toggle')) {
-                             folderToggle.querySelector('.toggle-icon').textContent = '▼';
+                        const folderToggleDiv = parentUl.previousElementSibling; // The div that holds the arrow
+                        if (folderToggleDiv && folderToggleDiv.classList.contains('note-list-folder-toggle')) {
+                            const toggleIcon = folderToggleDiv.querySelector('.toggle-icon');
+                            if (toggleIcon) {
+                                toggleIcon.classList.add('rotated'); // Ensure arrow points down
+                            }
                         }
                     }
-                    parentUl = parentUl.parentElement.closest('ul');
+                    parentUl = parentUl.parentElement.closest('.folder-item-sub-list'); // Move to the next parent sub-list
                 }
             }
         }

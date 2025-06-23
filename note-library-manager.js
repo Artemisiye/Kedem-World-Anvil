@@ -40,8 +40,7 @@ export function setupNoteLibrary(loadingOverlay, noteList, noteContentElement, n
             ul.className = 'space-y-1';
             ul.classList.add('root-ul'); // Add root-ul class for easier traversal
         } else {
-            // This indent class now applies to the ul itself, which is nested inside the li of the parent folder
-            // Its styling will be for the border and padding, the background highlight is on the <a> or <div>
+            // This class applies to the nested UL for the visual indent line
             ul.classList.add('folder-item-sub-list');
         }
 
@@ -55,32 +54,39 @@ export function setupNoteLibrary(loadingOverlay, noteList, noteContentElement, n
 
         sortedFolderNames.forEach(folderName => {
             const li = document.createElement('li');
-            li.className = 'folder-item';
+            li.className = 'folder-item'; // For general list item styling
 
             const folderToggle = document.createElement('div');
             folderToggle.className = 'note-list-folder-toggle flex items-center cursor-pointer px-2 py-1 rounded-lg text-slate-100 transition-colors duration-200 hover:bg-slate-700';
-            folderToggle.innerHTML = `<svg class="toggle-icon w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg><span>${folderName}</span>`;
+            // Using a specific SVG path for the arrow
+            folderToggle.innerHTML = `
+                <svg class="toggle-icon w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                </svg>
+                <span>${folderName}</span>
+            `;
             li.appendChild(folderToggle);
 
             const subList = createList(data.folders[folderName], document.createElement('ul'));
-            subList.classList.add('hidden');
+            subList.classList.add('hidden'); // Initially hidden
             li.appendChild(subList);
 
             folderToggle.addEventListener('click', () => {
                 subList.classList.toggle('hidden');
-                folderToggle.querySelector('.toggle-icon').classList.toggle('rotated'); // Add/remove rotated class for icon
+                folderToggle.querySelector('.toggle-icon').classList.toggle('rotated'); // Toggle rotated class for arrow icon
             });
             ul.appendChild(li);
         });
 
         sortedFilePaths.forEach(file => {
             const listItem = document.createElement('li');
+            // No specific class for LI, styling applied to the link
             const link = document.createElement('a');
             link.href = `#note-library:${file}`;
-            link.dataset.filepathRaw = file;
+            link.dataset.filepathRaw = file; // Store raw path for active highlighting
             const displayName = file.split('/').pop().replace('.md', '').replace(/([A-Z])/g, ' $1').trim();
             link.textContent = displayName;
-            link.className = 'note-list-item-link block px-4 py-2 rounded-lg text-slate-100 transition-colors duration-200 hover:bg-slate-700';
+            link.className = 'note-list-item-link block px-2 py-1 rounded-lg text-slate-100 transition-colors duration-200 hover:bg-slate-700';
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 history.pushState(null, '', `note-library.html#note-library:${file}`);
@@ -131,12 +137,13 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
         if (noteDisplayMainTitle) noteDisplayMainTitle.textContent = displayName;
 
         // --- PRE-PROCESSING FOR OBSIDIAN METADATA AND CUSTOM PROPERTIES ---
-        const processedLines = [];
+        const processedMarkdownLines = [];
         const lines = markdownText.split('\n');
         let inFrontmatter = false;
         let foundFirstDashLine = false;
         let propertiesHtml = ''; // Accumulate HTML for properties box
         let hasProperties = false;
+        let mainContentStarted = false; // Flag to indicate when markdown content starts
 
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i];
@@ -148,6 +155,8 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                     continue; // Skip the first '---' line
                 } else if (inFrontmatter) {
                     inFrontmatter = false;
+                    // End of frontmatter, propertiesHtml is now complete
+                    mainContentStarted = true; // Main content will start after this
                     continue; // Skip the second '---' line
                 }
             }
@@ -157,8 +166,7 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                 if (line.startsWith('aliases:')) {
                     const aliases = line.substring('aliases:'.length).trim();
                     if (aliases) {
-                        // Remove leading hyphen from alias if it's a list
-                        const cleanAliases = aliases.replace(/^- /, '');
+                        const cleanAliases = aliases.replace(/^- /, ''); // Remove leading hyphen from alias if it's a list
                         propertiesHtml += `
                             <div class="properties-item">
                                 <div class="properties-label">Aliases</div>
@@ -182,7 +190,7 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                         hasProperties = true;
                     }
                 }
-                // Add more specific property handlers here if needed, or a generic one
+                // Generic property handler for key:: value
                  else if (line.includes('::')) {
                     const [propName, propValue] = line.split('::', 2).map(s => s.trim());
                     if (propName && propValue) {
@@ -195,9 +203,15 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                         hasProperties = true;
                     }
                 }
+                // For other content within frontmatter that's not a standard property, add as a metadata line
+                else if (line.trim() !== '') {
+                    // This catches things like descriptions directly under '---' if not a key::value
+                    propertiesHtml += `<p class="metadata-line">${markedInstance.parseInline(line.trim())}</p>`;
+                    hasProperties = true; // Consider any content here as part of properties
+                }
             } else {
-                // If not in frontmatter, add the line as is for standard markdown parsing
-                processedLines.push(line);
+                // If not in frontmatter, add the line to be parsed as standard markdown
+                processedMarkdownLines.push(line);
             }
         }
 
@@ -214,7 +228,7 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                 </div>
             `;
         }
-        finalContentHtml += markedInstance.parse(processedLines.join('\n')); // Join remaining lines for main content
+        finalContentHtml += markedInstance.parse(processedMarkdownLines.join('\n')); // Join remaining lines for main content
 
         if (noteContentElement) noteContentElement.innerHTML = finalContentHtml;
 

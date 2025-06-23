@@ -74,6 +74,7 @@
             border-radius: 0.5rem;
             padding: 1rem;
             margin-bottom: 1.5rem;
+            line-height: 1.5; /* Adjusted for better readability inside box */
         }
         .properties-box-title {
             font-size: 0.875rem; /* text-sm */
@@ -134,20 +135,26 @@
             color: #1e293b;
         }
         /* Styling for the note list items to fit the sidebar */
-        .note-list-item-link {
-            display: block;
-            padding: 0.5rem 0.5rem; /* Adjusted padding to extend highlight */
+        .note-list-item-link,
+        .note-list-folder-toggle {
+            display: flex; /* Use flex to align icon and text */
+            align-items: center;
+            padding: 0.25rem 0.5rem; /* Adjusted padding to be more compact */
             border-radius: 0.25rem; /* Slightly less rounded */
             color: #f1f5f9; /* slate-100 */
-            transition-colors duration-200;
+            transition: background-color 0.2s, color 0.2s;
             text-decoration: none;
-            /* New: Text overflow properties */
+            width: 100%; /* Make them take full width of their LI parent */
+            box-sizing: border-box; /* Include padding in width calculation */
+
+            /* Text overflow properties */
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             line-height: 1.5; /* Ensure good line height */
         }
-        .note-list-item-link:hover {
+        .note-list-item-link:hover,
+        .note-list-folder-toggle:hover {
             background-color: #334155; /* slate-700 */
         }
         .note-list-item-link.active-note {
@@ -156,38 +163,32 @@
             font-weight: 400; /* No bold */
         }
         .note-list-folder-toggle {
-            display: flex;
-            align-items: center;
             cursor: pointer;
-            padding: 0.5rem 0.5rem; /* Adjusted padding */
-            border-radius: 0.25rem;
-            color: #f1f5f9; /* slate-100 */
-            transition-colors duration-200;
             font-weight: 400; /* No bold */
             user-select: none;
-            /* New: Text overflow properties */
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            line-height: 1.5; /* Ensure good line height */
-        }
-        .note-list-folder-toggle:hover {
-             background-color: #334155; /* slate-700 */
         }
         .toggle-icon {
             margin-right: 0.5rem; /* mr-2 */
             width: 1rem; /* Fixed width for icon */
-            flex-shrink: 0;
-            transform-origin: center;
-            transition: transform 0.15s ease-in-out;
+            flex-shrink: 0; /* Prevent icon from shrinking */
+            transform-origin: center center; /* Ensure rotation is from center */
+            transition: transform 0.15s ease-in-out; /* Smooth rotation */
         }
         .toggle-icon.rotated {
             transform: rotate(90deg);
         }
-        .folder-list-indent {
-            margin-left: 1rem; /* ml-4 */
+        /* Styling for the nested ULs to create the indent line */
+        .folder-item-sub-list {
+            margin-left: 1.25rem; /* Indent the sub-list */
             border-left: 1px solid #475569; /* slate-600 border */
-            padding-left: 0.5rem; /* pl-2 */
+            padding-left: 0.25rem; /* Padding for content inside the bordered area */
+            padding-top: 0.25rem; /* Small padding at the top of the sub-list */
+            padding-bottom: 0.25rem; /* Small padding at the bottom of the sub-list */
+        }
+        /* Ensure LI elements within the nested UL do not add extra padding,
+           their padding is handled by the link/toggle inside */
+        .folder-item-sub-list > li {
+            padding-left: 0;
         }
         /* Specific styling for the 'Note Library' active text in sidebar */
         .sidebar-active-text {
@@ -200,23 +201,9 @@
             user-select: none;
         }
 
-        /* Adjust the note list container's padding to allow highlight to extend */
+        /* Adjust the note list container's padding to make the scrollbar feel more overlay */
         #note-list-container {
-            padding-right: 0.5rem; /* Keep some space for scrollbar */
-        }
-
-        /* Ensure the folder list indent doesn't push the highlight box */
-        .folder-list-indent {
-            /* We need to re-think how the indent is applied,
-               or make the highlight background span the full width.
-               For now, the padding on link/toggle extends it. */
-            padding-left: 0; /* Remove padding here, it's on the item links */
-            margin-left: 1.25rem; /* Adjusted indent to compensate for removed padding */
-            border-left: none; /* Removing the border to prevent it cutting the highlight */
-        }
-        .folder-item > ul { /* Target the sub-lists within folders for the visual indent */
-            border-left: 1px solid #475569; /* Re-apply border to sub-lists */
-            padding-left: 0.5rem; /* Add padding to sub-lists */
+            padding-right: 0.25rem; /* Slightly reduce padding to give scrollbar more "hover" room */
         }
     </style>
 </head>
