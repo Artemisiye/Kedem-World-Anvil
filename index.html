@@ -12,10 +12,18 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, query, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase configuration (provided by Canvas environment)
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // Your actual Firebase project configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDwvtAXFUU4pd79JheFPY-Co6rfkUl8GUs",
+            authDomain: "kedem-anvil.firebaseapp.com",
+            // databaseURL: "https://kedem-anvil-default-rtdb.europe-west1.firebasedatabase.app", // This is for Realtime Database, app uses Firestore
+            projectId: "kedem-anvil",
+            storageBucket: "kedem-anvil.firebasestorage.app",
+            messagingSenderId: "229937316828",
+            appId: "1:229937316828:web:227b8fd192641b162f4519"
+        };
+        const APP_ID = firebaseConfig.appId; // Use the appId from your config
+        const initialAuthToken = null; // No custom token is needed for a public, anonymously signed-in app.
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
@@ -229,7 +237,7 @@
                     </div>
 
                     <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="text-2xl font-bold text-teal-700 mb-4">Inspirations</h3>
+                        <h3 class="2xl font-bold text-teal-700 mb-4">Inspirations</h3>
                         <p class="text-base leading-relaxed">The design of Kedem is influenced by a diverse range of sources, blending sandbox survival elements from games like <b class="font-semibold text-amber-700">Ark</b> and <b class="font-semibold text-amber-700">Valheim</b>, player-driven emergent gameplay from <b class="font-semibold text-amber-700">Rust</b>, and the deep, immersive worlds of RPGs like <b class="font-semibold text-amber-700">Skyrim</b>. Literary influences include the intuitive magic systems of Christopher Paolini's <b class="font-semibold text-amber-700">Inheritance Cycle</b> and the cosmic horror of Lovecraftian mythology, all woven together with threads from Greek, Norse, and Egyptian myths.</p>
                     </div>
                 </div>
@@ -438,9 +446,17 @@
             let activeRankFilter = 'All';
             let currentDeityDocId = null; 
 
-            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-            const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+            // Firebase configuration
+            const firebaseConfig = {
+                apiKey: "AIzaSyDwvtAXFUU4pd79JheFPY-Co6rfkUl8GUs",
+                authDomain: "kedem-anvil.firebaseapp.com",
+                projectId: "kedem-anvil",
+                storageBucket: "kedem-anvil.firebasestorage.app",
+                messagingSenderId: "229937316828",
+                appId: "1:229937316828:web:227b8fd192641b162f4519"
+            };
+            const APP_ID = firebaseConfig.appId; 
+            const initialAuthToken = null; 
 
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
@@ -500,7 +516,7 @@
                 const deitiesColRef = collection(db, `artifacts/${APP_ID}/public/data/deities`);
                 for (const deity of initialDeityDataFallback) {
                     try {
-                        const docRef = doc(deitiesColRef, deity.name); // Use deity.name as document ID
+                        const docRef = doc(deitiesColRef, deity.name); 
                         await setDoc(docRef, deity);
                         console.log(`Seeded deity: ${deity.name}`);
                     } catch (error) {
@@ -804,7 +820,7 @@
                 { name: 'Zeus', aliases: 'General of the Gods', tags: ['Influence/Greek', 'God/Overlord'], description: 'Zeus is one of the Overlords, known as the General of the Gods, the lord of the sky and thunder. Zeus rules from his temple in Mount Olympus, governing the west of the continent and overseeing Cthulhu\'s prison.', domain: 'Sky, Thunder, Kingship' },
                 { name: 'Agni', aliases: '', tags: ['Influence/Hindu', 'God/LowerGod'], description: 'A Hindu Lower God. Embodies the sacred fire.', domain: 'Fire' },
                 { name: 'Apollo', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. God of music, poetry, light, healing, and archery.', domain: 'Combat Archery, Barding, Music, Healing' },
-                { name: 'Ares', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'God of War and Combat. Known for brute strength and direct conflict. Offerings: Offensive combat abilities, Melee stances. Favors: Offensive combat, Bloodshed, Duels. Starting Boon: Bloodthirsty Vision, Rare bloodthirsty spear.', offerings: 'Offensive combat abilities, Melee stances', favors: 'Offensive combat, Bloodshed, Duels', startingBoon: 'Bloodthirsty Vision, Rare bloodthirsty spear', domain: 'War, Combat' },
+                { name: 'Ares', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'God of War and Combat. Known for brute strength and direct conflict. Offerings: Offensive combat abilities, Melee stances. Favors: Offensive combat, Bloodshed, Duels. Starting Boon: Bloodthirsty Vision, Rare bloodthirsty spear.', offerings: 'Offensive combat abilities, Melee stances', favors: 'Offensive combat, Bloodshed, Duels', startingBoon: ['Bloodthirsty Vision', 'Rare bloodthirsty spear'], domain: 'War, Combat' },
                 { name: 'Artemis', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'A Greek Lower God. Goddess of the hunt, wilderness, wild animals, and the Moon.', domain: 'Hunting, Moon (via Yorick), Wilderness' },
                 { name: 'Athena', aliases: '', tags: ['Influence/Greek', 'God/LowerGod'], description: 'Goddess of War and Strategy. Known for wisdom, handicraft, and strategic warfare. Offerings: Defensive combat abilities (parry), Target lock on Combat enhancing spells. Favors: Building communities. Starting Boon: Rare shield and sword.', offerings: 'Defensive combat abilities (parry), Target lock on Combat enhancing spells', favors: 'Building communities', startingBoon: 'Rare shield and sword', domain: 'War Strategy, Wisdom, Craftsmanship' },
                 { name: 'Brigid', aliases: '', tags: ['Influence/Celtic', 'God/LowerGod'], description: 'A Celtic Lower God. Goddess of poetry, healing, smithcraft, and domesticated animals.', domain: 'Animal handling, Poetry, Healing, Smithcraft' },
