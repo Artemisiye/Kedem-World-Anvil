@@ -119,12 +119,13 @@ export function setupNoteLibrary(loadingOverlay, noteList, noteContentElement, n
     if (noteContentElement) noteContentElement.innerHTML = '<p class="text-slate-500">Select a note from the left panel to view its content.</p>';
 }
 
+
 export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentElement, noteDisplayMainTitle) {
     if (loadingOverlay) loadingOverlay.classList.remove('hidden');
     if (noteContentElement) noteContentElement.innerHTML = '';
 
     const githubBasePath = `https://raw.githubusercontent.com/Artemisiye/Kedem-World-Anvil/main/notes/`;
-    const fullUrl = `${githubBasePath}${filePath}`;
+    const fullUrl = `${githubBasePath}${filePath}`; // filePath should already be correctly decoded here (from ui-manager)
     const displayName = filePath.split('/').pop().replace('.md', '').replace(/([A-Z])/g, ' $1').trim();
 
     try {
@@ -143,7 +144,6 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
         let foundFirstDashLine = false;
         let propertiesHtml = ''; // Accumulate HTML for properties box
         let hasProperties = false;
-        let mainContentStarted = false; // Flag to indicate when markdown content starts
 
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i];
@@ -155,8 +155,6 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                     continue; // Skip the first '---' line
                 } else if (inFrontmatter) {
                     inFrontmatter = false;
-                    // End of frontmatter, propertiesHtml is now complete
-                    mainContentStarted = true; // Main content will start after this
                     continue; // Skip the second '---' line
                 }
             }
@@ -166,7 +164,9 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                 if (line.startsWith('aliases:')) {
                     const aliases = line.substring('aliases:'.length).trim();
                     if (aliases) {
-                        const cleanAliases = aliases.replace(/^- /, ''); // Remove leading hyphen from alias if it's a list
+                        // Remove leading hyphen from alias if it's a list
+                        // Use a custom parser or regex to handle Obsidian's array-like aliases
+                        const cleanAliases = aliases.replace(/^- /, '');
                         propertiesHtml += `
                             <div class="properties-item">
                                 <div class="properties-label">Aliases</div>
@@ -177,6 +177,7 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                     }
                 } else if (line.startsWith('tags:')) {
                     const tagsContent = line.substring('tags:'.length).trim();
+                    // Split tags by space, comma, or hyphen, then filter out empty strings/hyphens
                     const tags = tagsContent.split(/[\s,-]+/).map(t => t.trim()).filter(t => t && t !== '-');
                     if (tags.length > 0) {
                         propertiesHtml += `
@@ -190,7 +191,7 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                         hasProperties = true;
                     }
                 }
-                // Generic property handler for key:: value
+                 // Generic property handler for key:: value
                  else if (line.includes('::')) {
                     const [propName, propValue] = line.split('::', 2).map(s => s.trim());
                     if (propName && propValue) {
@@ -205,9 +206,8 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                 }
                 // For other content within frontmatter that's not a standard property, add as a metadata line
                 else if (line.trim() !== '') {
-                    // This catches things like descriptions directly under '---' if not a key::value
                     propertiesHtml += `<p class="metadata-line">${markedInstance.parseInline(line.trim())}</p>`;
-                    hasProperties = true; // Consider any content here as part of properties
+                    hasProperties = true;
                 }
             } else {
                 // If not in frontmatter, add the line to be parsed as standard markdown
@@ -228,7 +228,7 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                 </div>
             `;
         }
-        finalContentHtml += markedInstance.parse(processedMarkdownLines.join('\n')); // Join remaining lines for main content
+        finalContentHtml += markedInstance.parse(processedMarkdownLines.join('\n'));
 
         if (noteContentElement) noteContentElement.innerHTML = finalContentHtml;
 

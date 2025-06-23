@@ -266,7 +266,6 @@ function initNoteLibraryPage() {
                 <div class="bg-white p-6 rounded-xl shadow-sm text-base text-slate-700 leading-relaxed">
                     <p>There was a problem loading the Note Library. Some required HTML elements were not found.</p>
                     <p>Please ensure all IDs in note-library.html match those expected by the JavaScript.</p>
-                    <p>If the issue persists, try clearing your browser cache and refreshing the page.</p>
                     <p class="mt-2 text-sm text-slate-500">Missing elements: <code>${missingElements}</code></p>
                 </div>
             `;
@@ -315,20 +314,27 @@ function initNoteLibraryPage() {
             const correspondingLink = noteListElement.querySelector(`a[data-filepath-raw="${fileToDisplay}"]`);
             if (correspondingLink) {
                 correspondingLink.classList.add('active-note');
-                let parentUl = correspondingLink.closest('.folder-item-sub-list'); // Target the nested UL with the indent
-                // Traverse up to show parent folders if they are hidden
-                while (parentUl && !parentUl.classList.contains('root-ul')) {
-                    if (parentUl.classList.contains('hidden')) {
-                        parentUl.classList.remove('hidden');
-                        const folderToggleDiv = parentUl.previousElementSibling; // The div that holds the arrow
-                        if (folderToggleDiv && folderToggleDiv.classList.contains('note-list-folder-toggle')) {
-                            const toggleIcon = folderToggleDiv.querySelector('.toggle-icon');
-                            if (toggleIcon) {
-                                toggleIcon.classList.add('rotated'); // Ensure arrow points down
+                let currentUl = correspondingLink.closest('.folder-item-sub-list'); // Start from the immediate parent UL that has indent
+                // Traverse up the hierarchy of nested ULs (sub-lists)
+                while (currentUl) {
+                    if (currentUl.classList.contains('hidden')) {
+                        currentUl.classList.remove('hidden');
+                        // Find the folder toggle DIV (sibling of the UL's parent LI)
+                        // It's the previous sibling of the LI that contains 'currentUl'
+                        const parentLi = currentUl.parentElement;
+                        if (parentLi) {
+                            const folderToggleDiv = parentLi.querySelector('.note-list-folder-toggle');
+                            if (folderToggleDiv) {
+                                const toggleIcon = folderToggleDiv.querySelector('.toggle-icon');
+                                if (toggleIcon && !toggleIcon.classList.contains('rotated')) {
+                                    toggleIcon.classList.add('rotated'); // Ensure arrow points down
+                                }
                             }
                         }
                     }
-                    parentUl = parentUl.parentElement.closest('.folder-item-sub-list'); // Move to the next parent sub-list
+                    // Move up to the next parent folder's sub-list.
+                    // This finds the closest ancestor UL that also has 'folder-item-sub-list'
+                    currentUl = currentUl.parentElement.closest('.folder-item-sub-list');
                 }
             }
         }
