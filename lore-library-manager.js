@@ -1,8 +1,7 @@
 // lore-library-manager.js
 
 import { loreFiles } from './data-constants.js'; // Import loreFiles from constants
-
-// Marked.js is globally available via CDN link in index.html, no import needed here.
+import { markedInstance } from './markdown-parser.js'; // Import the configured marked instance
 
 export function setupLoreLibrary(loadingOverlay) {
     const loreNotesList = document.getElementById('lore-notes-list');
@@ -74,7 +73,7 @@ export function setupLoreLibrary(loadingOverlay) {
         sortedFilePaths.forEach(file => {
             const listItem = document.createElement('li');
             const link = document.createElement('a');
-            link.href = `#lore-library:${file}`; // Update hash for history API
+            link.href = `#notes-library:${file}`; // Update hash for history API (new section name)
             // Add a data attribute with the raw file path for easy lookup when navigating via URL hash
             link.dataset.filepathRaw = file; 
             const displayName = file.split('/').pop().replace('.md', '').replace(/([A-Z])/g, ' $1').trim(); 
@@ -83,7 +82,8 @@ export function setupLoreLibrary(loadingOverlay) {
             link.addEventListener('click', async (e) => {
                 e.preventDefault();
                 // Update URL hash without page reload
-                history.pushState(null, '', `#lore-library:${file}`);
+                history.pushState(null, '', `#notes-library:${file}`); // Use new section name in hash
+                // Pass loreNoteTitle, loreNoteContent to the fetch function directly
                 await fetchAndDisplayMarkdown(file, loadingOverlay, loreNoteTitle, loreNoteContent);
                 document.querySelectorAll('#lore-notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
                 link.classList.add('bg-slate-300', 'font-semibold');
@@ -107,136 +107,75 @@ export async function fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNote
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status} - Could not access raw file. Ensure it's public and path is correct.`);
         }
-        const markdownText = await response.text();
+        let markdownText = await response.text();
         
-        // Setup a *new* Marked.js renderer instance for each render to avoid conflicts
-        // and ensure the latest extensions/options are applied.
-        
-        // Define the wikilink extension directly here to access loreFiles implicitly
-        const wikilinkExtension = {
-            name: 'wikilink',
-            level: 'inline',
-            start(src) { return src.indexOf('[['); },
-            tokenizer(src, tokens) {
-                const rule = /^\[\[([^|\]]+?)(?:\|([^\]]+?))?\]\]/;
-                const match = rule.exec(src);
-                if (match) {
-                    let targetWikiName = match[1].trim(); 
-                    const githubBasePath = `https://github.com/Artemisiye/Kedem-World-Anvil/blob/main/notes/`;
-                    
-                    // Use loreFiles from the module scope (already imported)
-                    const resolvedFilePath = loreFiles.find(f => 
-                        f.toLowerCase() === `${targetWikiName.toLowerCase()}.md` || 
-                        f.toLowerCase().endsWith(`/${targetWikiName.toLowerCase()}.md`) ||
-                        f.toLowerCase().split('/').pop() === `${targetWikiName.toLowerCase()}.md`
-                    );
-                    
-                    let href;
-                    if (resolvedFilePath) {
-                        href = `#/lore-library:${resolvedFilePath}`; 
-                        return {
-                            type: 'wikilink',
-                            raw: match[0],
-                            page: targetWikiName,
-                            text: match[2] || targetWikiName.split('/').pop().replace(/([A-Z])/g, ' $1').trim(),
-                            href: href,
-                            isInternal: true,
-                            resolvedPath: resolvedFilePath
-                        };
-                    } else {
-                        const fallbackPath = targetWikiName.replace(/ /g, '%20');
-                        href = `${githubBasePath}${fallbackPath}.md`;
-                        return {
-                            type: 'wikilink',
-                            raw: match[0],
-                            page: targetWikiName,
-                            text: match[2] || targetWikiName.split('/').pop().replace(/([A-Z])/g, ' $1').trim(),
-                            href: href,
-                            isInternal: false
-                        };
-                    }
-                }
-            },
-            renderer(token) {
-                if (token.isInternal) {
-                    return `<a href="${token.href}" class="wikilink internal-wikilink" data-filepath="${token.resolvedPath}">${token.text}</a>`;
-                } else {
-                    return `<a href="${token.href}" class="wikilink" target="_blank">${token.text}</a>`;
+        // Set data-rawfilepath on the title element for image path resolution in marked.js renderer
+        loreNoteTitle.dataset.rawfilepath = filePath;
+
+        // --- PRE-PROCESSING FOR OBSIDIAN METADATA AND CUSTOM PROPERTIES ---
+        const processedLines = [];
+        const lines = markdownText.split('\n');
+        let inFrontmatter = false;
+        let foundFirstDashLine = false;
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
+            
+            // Toggle frontmatter state
+            if (line.trim() === '---') {
+                if (!foundFirstDashLine) { // Capture the first --- for frontmatter start
+                    inFrontmatter = true;
+                    foundFirstDashLine = true;
+                    processedLines.push('<hr class="my-2 border-slate-300">'); // Render as horizontal rule
+                    continue; // Skip processing this line further as Markdown
+                } else if (inFrontmatter) { // Capture the second --- for frontmatter end
+                    inFrontmatter = false;
+                    processedLines.push('<hr class="my-2 border-slate-300">'); // Render as horizontal rule
+                    continue;
                 }
             }
-        };
-
-        const customRenderer = {
-            paragraph(text) {
-                // Heuristic to detect YAML frontmatter lines or custom properties (tags, aliases, etc.)
-                if (text.startsWith('---') || text.includes('::') || text.startsWith('aliases:') || text.startsWith('tags:') || text.startsWith('NpcAggresion:') || text.startsWith('NpcTags:') || text.startsWith('BaseValue:') || text.startsWith('## Offerings:') || text.startsWith('## Favors:') || text.startsWith('## Starting Boon:')) {
-                    const lines = text.split('<br>'); // marked with breaks:true will use <br>
-                    let formattedHtml = '';
-                    lines.forEach(line => {
-                        line = line.trim();
-                        if (line === '---') {
-                            formattedHtml += `<hr class="my-2 border-slate-300">`; 
-                        } else if (line.startsWith('aliases:')) {
-                            const aliases = line.substring('aliases:'.length).trim();
-                            if (aliases) {
-                                formattedHtml += `<p class="metadata-line"><strong>Aliases:</strong> ${aliases}</p>`;
-                            }
-                        } else if (line.startsWith('tags:')) {
-                            const tagsContent = line.substring('tags:'.length).trim();
-                            const tags = tagsContent.split(/[\s,]+-/).map(t => t.replace('-', '').trim()).filter(t => t); 
-                            if (tags.length > 0) {
-                                formattedHtml += `<p class="metadata-line"><strong>Tags:</strong> ${tags.map(tag => `<span class="tag-chip">${tag}</span>`).join('')}</p>`;
-                            }
-                        } else if (line.includes('::')) { 
-                            const [propName, propValue] = line.split('::', 2).map(s => s.trim());
-                            if (propName && propValue) {
-                                formattedHtml += `<p class="property-line"><strong>${propName}:</strong> ${propValue}</p>`;
-                            }
-                        } else if (line.startsWith('## ')) { 
-                             formattedHtml += `<h4 class="text-md font-semibold text-teal-700 mt-3 mb-1">${line.substring(3).trim()}</h4>`;
-                        } else if (line.startsWith('- ') && !line.startsWith('--')) { 
-                             formattedHtml += `<p class="text-sm ml-4">• ${line.substring(2).trim()}</p>`; 
-                        } else if (line.startsWith('BaseValue:')) {
-                            formattedHtml += `<p class="property-line"><strong>${line.split(':')[0].trim()}:</strong> ${line.split(':')[1].trim()}</p>`;
-                        }
-                         else {
-                            formattedHtml += `<p>${line}</p>`; 
-                        }
-                    });
-                    return formattedHtml; 
-                }
-                // Handle image syntax like ![[Map.png]]
-                if (text.startsWith('![[')) {
-                    const imgFileName = text.match(/!\[\[(.*?)\]\]/);
-                    if (imgFileName && imgFileName[1]) {
-                        const currentFileDir = filePath.substring(0, filePath.lastIndexOf('/') + 1); 
-                        const imgPathBase = `https://raw.githubusercontent.com/Artemisiye/Kedem-World-Anvil/main/notes/`;
-                        
-                        let imageSrc = `${imgPathBase}${imgFileName[1]}`;
-                        if (imgFileName[1].includes('/')) {
-                            imageSrc = `${imgPathBase}${imgFileName[1]}`;
-                        } else if (currentFileDir) {
-                            imageSrc = `${imgPathBase}${currentFileDir}${imgFileName[1]}`;
-                        }
-                        
-                        return `<p><img src="${imageSrc}" alt="${imgFileName[1]}" class="max-w-full h-auto rounded-lg shadow-md mx-auto my-4"></p>`;
+            
+            if (inFrontmatter) {
+                // Process lines within frontmatter
+                if (line.startsWith('aliases:')) {
+                    const aliases = line.substring('aliases:'.length).trim();
+                    if (aliases) {
+                        processedLines.push(`<p class="metadata-line"><strong>Aliases:</strong> ${markedInstance.parseInline(aliases.replace(/-/g, ''))}</p>`);
                     }
+                } else if (line.startsWith('tags:')) {
+                    const tagsContent = line.substring('tags:'.length).trim();
+                    // Split by hyphen or comma, then trim, then filter empty strings
+                    const tags = tagsContent.split(/[\s,-]+/).map(t => t.trim()).filter(t => t && t !== '-'); 
+                    if (tags.length > 0) {
+                        processedLines.push(`<p class="metadata-line"><strong>Tags:</strong> ${tags.map(tag => `<span class="tag-chip">${tag.replace('#', '')}</span>`).join('')}</p>`);
+                    }
+                } else if (line.includes('::')) { // For Description::, NpcAggresion:: etc.
+                    const [propName, propValue] = line.split('::', 2).map(s => s.trim());
+                    if (propName && propValue) {
+                        processedLines.push(`<p class="property-line"><strong>${propName}:</strong> ${markedInstance.parseInline(propValue)}</p>`);
+                    }
+                } else if (line.startsWith('## Offerings:') || line.startsWith('## Favors:') || line.startsWith('## Starting Boon:')) {
+                     // Convert Obsidian-style headings in metadata to smaller HTML headings
+                    processedLines.push(`<h4 class="text-md font-semibold text-teal-700 mt-3 mb-1">${line.substring(3).trim()}</h4>`);
+                } else if (line.startsWith('- ')) { // List items in metadata (like for Ares starting boon)
+                    processedLines.push(`<p class="text-sm ml-4">• ${markedInstance.parseInline(line.substring(2).trim())}</p>`);
+                } else if (line.startsWith('BaseValue:')) {
+                    processedLines.push(`<p class="property-line"><strong>${line.split(':')[0].trim()}:</strong> ${line.split(':')[1].trim()}</p>`);
+                } else if (line.trim() !== '') { // Catch any other non-empty lines within frontmatter
+                    processedLines.push(`<p class="metadata-line">${markedInstance.parseInline(line.trim())}</p>`);
                 }
-                return `<p>${text}</p>`; 
+            } else {
+                // Process regular Markdown content
+                processedLines.push(line);
             }
-        };
-
-        const markdownParser = new marked.Marked({ 
-            breaks: true, 
-            renderer: new marked.Renderer() 
-        });
-        markdownParser.use({ extensions: [wikilinkExtension] });
-        markdownParser.use({ renderer: customRenderer }); 
+        }
+        markdownText = processedLines.join('\n'); // Rejoin processed lines
 
 
         loreNoteTitle.textContent = displayName;
-        loreNoteContent.innerHTML = markdownParser.parse(markdownText); 
+        loreNoteContent.innerHTML = markedInstance.parse(markdownText); // Use the globally configured marked instance
         
+        // Re-attach event listeners for internal wikilinks *after* rendering
         loreNoteContent.querySelectorAll('a.internal-wikilink').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -244,10 +183,10 @@ export async function fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNote
                 if (targetFilePath) {
                     history.pushState(null, '', targetFilePath); 
                     // Pass current HTML elements for Lore Library to avoid re-querying
-                    fetchAndDisplayMarkdown(targetFilePath.substring('#lore-library:'.length), loadingOverlay, loreNoteTitle, loreNoteContent);
+                    fetchAndDisplayMarkdown(targetFilePath.substring('#notes-library:'.length), loadingOverlay, loreNoteTitle, loreNoteContent);
                     
                     document.querySelectorAll('#lore-notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
-                    const correspondingLink = document.querySelector(`#lore-notes-list a[data-filepath-raw="${targetFilePath.substring('#lore-library:'.length)}"]`);
+                    const correspondingLink = document.querySelector(`#lore-notes-list a[data-filepath-raw="${targetFilePath.substring('#notes-library:'.length)}"]`);
                     if (correspondingLink) {
                         correspondingLink.classList.add('bg-slate-300', 'font-semibold');
                     }

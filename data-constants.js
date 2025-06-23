@@ -43,6 +43,9 @@ export const initialDeityDataFallback = [
     { name: 'Samael', aliases: 'Satan, The Creeping Death', tags: ['God/Devil'], description: 'An enigmatic god, perhaps the primordial Death Itself. Associated with temptation and destruction.', domain: 'Death, Temptation, Destruction' },
 ];
 
+// All lore files from the 'notes' directory in the GitHub repository
+// IMPORTANT: Keep this list updated manually to include new notes you want displayed.
+// Paths are relative to the /notes/ directory in your GitHub repo.
 export const loreFiles = [
     // Gameplay
     'Gameplay/Ascending to Godhood.md',
@@ -51,7 +54,7 @@ export const loreFiles = [
     'Gameplay/Gameplay Domains.md',
     'Gameplay/Mastering a Domain.md',
     'Gameplay/Mid Game.md',
-    'Gameplay/notes.md', // Assuming this is a content note
+    'Gameplay/notes.md', 
     'Gameplay/Starting Boon.md',
     'Gameplay/The Labyrinth.md',
 
@@ -66,7 +69,7 @@ export const loreFiles = [
     'Ideas/Underworld.md',
 
     // Introduction
-    'Introduction/Game Design Doscument Old.md', // Assuming this is a content note
+    'Introduction/Game Design Doscument Old.md', 
     'Introduction/Inspirations and Influences.md',
     'Introduction/Introduction.md',
 
@@ -101,17 +104,13 @@ export const loreFiles = [
     'Items/Crafting/Crafting Materials/Fabrics/Cotton.md',
     'Items/Crafting/Crafting Materials/Fabrics/Linen.md',
     'Items/Crafting/Crafting Materials/Fabrics/Silk.md',
-    // Items/Crafting/Crafting Materials/Leathers (assuming .md files within this folder)
-    // You would add paths like: 'Items/Crafting/Crafting Materials/Leathers/LeatherType.md',
     // Items/Crafting/Crafting Materials/Metals
     'Items/Crafting/Crafting Materials/Metals/Copper.md',
     'Items/Crafting/Crafting Materials/Metals/Gold.md',
     'Items/Crafting/Crafting Materials/Metals/Iron.md',
-    'Items/Crafting/Crafting Materials/Metals/Metals.md', // Assuming a general "Metals" note
+    'Items/Crafting/Crafting Materials/Metals/Metals.md', 
     'Items/Crafting/Crafting Materials/Metals/Silver.md',
     'Items/Crafting/Crafting Materials/Metals/Tin.md',
-    // Items/Crafting/Crafting Materials/Woods (assuming .md files within this folder)
-    // You would add paths like: 'Items/Crafting/Crafting Materials/Woods/WoodType.md',
     // Items/Crafting/Crafting Stations
     'Items/Crafting/Crafting Stations/Alchemy Bath.md',
     'Items/Crafting/Crafting Stations/Anvil.md',
@@ -159,14 +158,14 @@ export const loreFiles = [
     'Magic/Spells/Life Toll.md',
     'Magic/Spells/Mana Blast.md',
     
-    // Melee Combat (placeholder, assuming it's a file)
+    // Melee Combat (assuming Melee Combat.md exists in the notes root or is a folder)
     'Melee Combat.md', 
 
     // Player Mechanics
     'Player Mechanics/Attribute.md',
-    'Player Mechanics/Health System.md', // Assuming this is a general overview note
-    'Player Mechanics/Magic System.md',  // Assuming this is a general overview note
-    'Player Mechanics/Physical System.md', // Assuming this is a general overview note
+    'Player Mechanics/Health System.md', 
+    'Player Mechanics/Magic System.md',  
+    'Player Mechanics/Physical System.md', 
     // Player Mechanics/Damage
     'Player Mechanics/Damage/Damage.md',
     'Player Mechanics/Damage/Fire Damage.md',
@@ -176,7 +175,7 @@ export const loreFiles = [
     'Player Mechanics/Damage/Slash Damage.md',
     // Player Mechanics/Health System (sub-notes for Health System)
     'Player Mechanics/Health System/Health Max.md',
-    'Player Mechanics/Health System/Health.md', // Specific "Health" attribute note
+    'Player Mechanics/Health System/Health.md', 
     'Player Mechanics/Health System/Rejuvenance.md',
     'Player Mechanics/Health System/Resilience.md',
     'Player Mechanics/Health System/Vitality.md',
@@ -210,8 +209,8 @@ export const loreFiles = [
     // World Building
     'World Building/Kedem Worldbuilding.md',
     'World Building/Lore.md',
-    // 'World Building/Kedem.md', // This is likely your map image, not markdown for display
-    // 'World Building/Map.png', // This is an image, not markdown
+    // 'World Building/Kedem.md', // Likely map image, not markdown
+    // 'World Building/Map.png', // Image
     // World Building/Flora
     'World Building/Flora/Beech.md',
     'World Building/Flora/Birch.md',

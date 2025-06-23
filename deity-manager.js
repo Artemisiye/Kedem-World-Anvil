@@ -2,15 +2,13 @@
 import { collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { APP_ID } from './firebase-init.js'; 
 import { initialDeityDataFallback } from './data-constants.js'; 
-import { loreFiles } from './data-constants.js'; // Import loreFiles to pass to wikilink resolver
-
-// Marked.js is globally available via CDN link in index.html, no import needed here.
+import { markedInstance } from './markdown-parser.js'; // Import the configured marked instance
 
 let deityData = []; 
 let currentDeityDocId = null; 
 let db = null;
 let currentUserId = null;
-let isCurrentUserEditor = false; // New flag for editor status
+let isCurrentUserEditor = false; 
 
 // UI elements (passed from ui-manager or accessed directly if necessary)
 const deityGrid = document.getElementById('deity-grid');
@@ -47,10 +45,10 @@ let activeRankFilter = 'All';
 export function initializeDeityManager(firestoreInstance, userIdParam, isEditorParam) {
     db = firestoreInstance;
     currentUserId = userIdParam;
-    isCurrentUserEditor = isEditorParam; // Set editor status
+    isCurrentUserEditor = isEditorParam; 
 
     // Adjust edit button visibility based on editor status
-    if (deityModalEditButton) { // Ensure button exists before trying to access
+    if (deityModalEditButton) { 
         if (isCurrentUserEditor) {
             deityModalEditButton.classList.remove('hidden');
         } else {
@@ -184,8 +182,8 @@ function openDeityModal(deity) {
         modalDeityTags.appendChild(tagSpan);
     });
 
-    // Render description with Markdown
-    modalDeityDescriptionRendered.innerHTML = marked.parse(deity.description || 'No description available.');
+    // Render description with Markdown using the globally configured marked instance
+    modalDeityDescriptionRendered.innerHTML = markedInstance.parse(deity.description || 'No description available.');
     
     modalDeityAdditionalRendered.innerHTML = '';
     let additionalHtml = '';
@@ -207,7 +205,8 @@ function openDeityModal(deity) {
     if (deity.domain) {
         additionalHtml += `<p><b class="font-semibold">Domain</b>: ${deity.domain}</p>`;
     }
-    modalDeityAdditionalRendered.innerHTML = marked.parse(additionalHtml); // Parse additional info too
+    // Render additional info with Markdown using the globally configured marked instance
+    modalDeityAdditionalRendered.innerHTML = markedInstance.parse(additionalHtml); 
     
     editDeityNameDisplay.textContent = deity.name; 
     editDeityAliases.value = deity.aliases || '';
@@ -243,9 +242,8 @@ function toggleEditMode() {
 }
 
 async function saveDeityChanges() {
-    if (!db || !currentUserId || !isCurrentUserEditor) { // Check isCurrentUserEditor
+    if (!db || !currentUserId || !isCurrentUserEditor) { 
         console.error("Firestore not initialized, user not authenticated, or not authorized to edit.");
-        // Potentially show a user-friendly message
         return;
     }
     if (currentDeityDocId) {

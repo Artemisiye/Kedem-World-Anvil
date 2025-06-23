@@ -106,6 +106,9 @@ export function setupUI() {
         });
     });
     
+    // Pass loreFiles to handleNavigation via the global window object.
+    // The handleNavigation function will then call fetchAndDisplayMarkdown,
+    // which also relies on window.loreFiles (from markdown-parser.js and data-constants.js).
     window.addEventListener('hashchange', () => handleNavigation(window.location.hash));
     handleNavigation(window.location.hash); 
 
@@ -119,12 +122,13 @@ function handleNavigation(hash) {
     navLinks.forEach(link => link.classList.remove('active'));
     contentSections.forEach(section => section.classList.remove('active'));
     
-    if (hash.startsWith('#lore-library:')) {
-        const filePath = hash.substring('#lore-library:'.length);
-        document.querySelector('a[href="#lore-library"]').classList.add('active'); 
-        document.getElementById('lore-library').classList.add('active'); 
+    // Updated to use the new section name
+    if (hash.startsWith('#notes-library:')) {
+        const filePath = hash.substring('#notes-library:'.length);
+        document.querySelector('a[href="#notes-library"]').classList.add('active'); // Activate Notes Library nav link
+        document.getElementById('lore-library').classList.add('active'); // Activate Lore Library section (by ID)
         
-        // Pass loreNoteTitle, loreNoteContent, and loadingOverlay to fetchAndDisplayMarkdown
+        // Pass loreNoteTitle, loreNoteContent, and loadingOverlay
         fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNoteTitle, loreNoteContent);
         
         document.querySelectorAll('#lore-notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
