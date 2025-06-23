@@ -51,7 +51,7 @@ export const loreFiles = [
     'Gameplay/Gameplay Domains.md',
     'Gameplay/Mastering a Domain.md',
     'Gameplay/Mid Game.md',
-    'Gameplay/notes.md',
+    'Gameplay/notes.md', // Assuming this is a content note
     'Gameplay/Starting Boon.md',
     'Gameplay/The Labyrinth.md',
 
@@ -66,7 +66,7 @@ export const loreFiles = [
     'Ideas/Underworld.md',
 
     // Introduction
-    'Introduction/Game Design Doscument Old.md',
+    'Introduction/Game Design Doscument Old.md', // Assuming this is a content note
     'Introduction/Inspirations and Influences.md',
     'Introduction/Introduction.md',
 
@@ -101,13 +101,17 @@ export const loreFiles = [
     'Items/Crafting/Crafting Materials/Fabrics/Cotton.md',
     'Items/Crafting/Crafting Materials/Fabrics/Linen.md',
     'Items/Crafting/Crafting Materials/Fabrics/Silk.md',
+    // Items/Crafting/Crafting Materials/Leathers (assuming .md files within this folder)
+    // You would add paths like: 'Items/Crafting/Crafting Materials/Leathers/LeatherType.md',
     // Items/Crafting/Crafting Materials/Metals
     'Items/Crafting/Crafting Materials/Metals/Copper.md',
     'Items/Crafting/Crafting Materials/Metals/Gold.md',
     'Items/Crafting/Crafting Materials/Metals/Iron.md',
-    'Items/Crafting/Crafting Materials/Metals/Metals.md',
+    'Items/Crafting/Crafting Materials/Metals/Metals.md', // Assuming a general "Metals" note
     'Items/Crafting/Crafting Materials/Metals/Silver.md',
     'Items/Crafting/Crafting Materials/Metals/Tin.md',
+    // Items/Crafting/Crafting Materials/Woods (assuming .md files within this folder)
+    // You would add paths like: 'Items/Crafting/Crafting Materials/Woods/WoodType.md',
     // Items/Crafting/Crafting Stations
     'Items/Crafting/Crafting Stations/Alchemy Bath.md',
     'Items/Crafting/Crafting Stations/Anvil.md',
@@ -155,14 +159,15 @@ export const loreFiles = [
     'Magic/Spells/Life Toll.md',
     'Magic/Spells/Mana Blast.md',
     
-    // Melee Combat (placeholder, assuming it's a file)
+    // Melee Combat (assuming Melee Combat.md exists in the notes root or is a folder)
+    // If it's a folder, you'd list files like 'Melee Combat/SomeTechnique.md'
     'Melee Combat.md', 
 
     // Player Mechanics
     'Player Mechanics/Attribute.md',
-    'Player Mechanics/Health System.md',
-    'Player Mechanics/Magic System.md',
-    'Player Mechanics/Physical System.md',
+    'Player Mechanics/Health System.md', // Assuming this is a general overview note
+    'Player Mechanics/Magic System.md',  // Assuming this is a general overview note
+    'Player Mechanics/Physical System.md', // Assuming this is a general overview note
     // Player Mechanics/Damage
     'Player Mechanics/Damage/Damage.md',
     'Player Mechanics/Damage/Fire Damage.md',
@@ -170,20 +175,20 @@ export const loreFiles = [
     'Player Mechanics/Damage/Impact Damage.md',
     'Player Mechanics/Damage/Pierce Damage.md',
     'Player Mechanics/Damage/Slash Damage.md',
-    // Player Mechanics/Health System
+    // Player Mechanics/Health System (sub-notes for Health System)
     'Player Mechanics/Health System/Health Max.md',
-    'Player Mechanics/Health System/Health.md',
+    'Player Mechanics/Health System/Health.md', // Specific "Health" attribute note
     'Player Mechanics/Health System/Rejuvenance.md',
     'Player Mechanics/Health System/Resilience.md',
     'Player Mechanics/Health System/Vitality.md',
-    // Player Mechanics/Magic System (Attributes related to magic, not the Magic System overview itself)
+    // Player Mechanics/Magic System (Attributes related to magic, distinct from the overall Magic System note)
     'Player Mechanics/Magic System/Aether.md',
     'Player Mechanics/Magic System/Arcana.md',
     'Player Mechanics/Magic System/Intelligence.md',
     'Player Mechanics/Magic System/Mana.md',
     'Player Mechanics/Magic System/Will Power.md',
     'Player Mechanics/Magic System/WP soft cap.md',
-    // Player Mechanics/Physical System
+    // Player Mechanics/Physical System (Attributes related to physical mechanics, distinct from the overall Physical System note)
     'Player Mechanics/Physical System/Endurance.md',
     'Player Mechanics/Physical System/Energy Max.md',
     'Player Mechanics/Physical System/Energy.md',
@@ -206,6 +211,8 @@ export const loreFiles = [
     // World Building
     'World Building/Kedem Worldbuilding.md',
     'World Building/Lore.md',
+    // 'World Building/Kedem.md', // This is likely your map image, not markdown for display
+    // 'World Building/Map.png', // This is an image, not markdown
     // World Building/Flora
     'World Building/Flora/Beech.md',
     'World Building/Flora/Birch.md',
@@ -223,6 +230,7 @@ export const loreFiles = [
     'World Building/Gods/Devils/Azazel.md',
     'World Building/Gods/Devils/Ben Shahar.md',
     'World Building/Gods/Devils/Samael.md',
+    // 'World Building/Gods/God Portraits' (contains images/canvases, not markdown)
     // World Building/Gods/Great Old Ones
     'World Building/Gods/Great Old Ones/Cthulhu.md',
     'World Building/Gods/Great Old Ones/Nyarlathotep.md',
@@ -374,52 +382,3 @@ export const loreFiles = [
     // z Misc
     'z Misc/Lumen Command.md'
 ];
-
-export function setupLoreLibrary(loadingOverlay) {
-    const loreNotesList = document.getElementById('lore-notes-list');
-    const loreNoteTitle = document.getElementById('lore-note-title');
-    const loreNoteContent = document.getElementById('lore-note-content');
-    loreNotesList.innerHTML = ''; 
-
-    const sortedLoreFiles = [...loreFiles].sort((a, b) => {
-        const nameA = a.replace('.md', '').split('/').pop().replace(/([A-Z])/g, ' $1').trim();
-        const nameB = b.replace('.md', '').split('/').pop().replace(/([A-Z])/g, ' $1').trim();
-        return nameA.localeCompare(nameB);
-    });
-
-    sortedLoreFiles.forEach(file => {
-        const listItem = document.createElement('li');
-        const link = document.createElement('a');
-        link.href = `#`; 
-        const displayName = file.replace('.md', '').split('/').pop().replace(/([A-Z])/g, ' $1').trim(); 
-        link.textContent = displayName;
-        link.className = 'block px-4 py-2 rounded-lg text-slate-700 hover:bg-slate-200 transition-colors duration-200';
-        link.addEventListener('click', async (e) => {
-            e.preventDefault();
-            loadingOverlay.classList.remove('hidden');
-            // Construct the raw GitHub URL for the markdown file
-            const rawGitHubUrl = `https://raw.githubusercontent.com/Artemisiye/Kedem-World-Anvil/main/notes/${file}`;
-            
-            try {
-                const response = await fetch(rawGitHubUrl);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status} - Could not access raw file. Ensure it's public and path is correct.`);
-                }
-                const markdownText = await response.text();
-                loreNoteTitle.textContent = displayName; // Use the clean display name
-                loreNoteContent.innerHTML = marked.parse(markdownText); // Parse Markdown to HTML
-            } catch (error) {
-                console.error('Error fetching Markdown file:', error);
-                loreNoteTitle.textContent = `Error loading ${displayName}`;
-                loreNoteContent.innerHTML = `<p class="text-red-600">Could not load note. Please ensure the file path is correct and the file is publicly accessible.</p><p>Error: ${error.message}</p>`;
-            } finally {
-                loadingOverlay.classList.add('hidden');
-            }
-            // Highlight active link
-            document.querySelectorAll('#lore-notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
-            link.classList.add('bg-slate-300', 'font-semibold');
-        });
-        listItem.appendChild(link);
-        loreNotesList.appendChild(listItem);
-    });
-}
