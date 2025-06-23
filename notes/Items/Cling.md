@@ -1,0 +1,1 @@
+Clinging is an Item's trait that binds it to the player, and will not be removed until death, where it will be dropped normally.

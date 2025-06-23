@@ -1,0 +1,12 @@
+{
+	"nodes":[
+		{"id":"48e27ef6228e67ac","type":"file","file":"Items/Armor/Slots/-.png","x":60,"y":-400,"width":255,"height":731},
+		{"id":"d3e3dec6a6a2779c","type":"file","file":"Items/Armor/Slots/Helmet.png","x":129,"y":-380,"width":124,"height":120},
+		{"id":"97a23c00fbe6fe74","type":"file","file":"Items/Armor/Slots/Breastplate.png","x":129,"y":-240,"width":124,"height":128},
+		{"id":"e5448d10fb7e8bed","type":"file","file":"Items/Armor/Slots/Greaves.png","x":129,"y":-95,"width":124,"height":125},
+		{"id":"ccc778c6e507473d","type":"file","file":"Items/Armor/Slots/Sabatons.png","x":126,"y":180,"width":124,"height":123},
+		{"id":"7ce568e8efaddf62","type":"file","file":"Items/Armor/Slots/Pauldron.png","x":280,"y":-237,"width":124,"height":125},
+		{"id":"99d53539e3fa6022","type":"file","file":"Items/Armor/Slots/Gauntlets.png","x":-20,"y":-92,"width":124,"height":120}
+	],
+	"edges":[]
+}

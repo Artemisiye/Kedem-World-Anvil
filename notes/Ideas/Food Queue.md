@@ -1,0 +1,1 @@
+Food can be queued, and be digested by queue order, adding its effects seperately (not including drinks)

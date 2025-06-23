@@ -1,0 +1,5 @@
+---
+aliases:
+  - "#NPC/Archbeast"
+  - Archbeasts
+---
