@@ -2,18 +2,18 @@
 import { db, currentUserId, auth, signInUser, signOutUser } from './firebase-init.js'; 
 import { initializeDeityManager } from './deity-manager.js'; 
 import { setupLoreLibrary, fetchAndDisplayMarkdown } from './lore-library-manager.js'; 
-import { loreFiles } from './data-constants.js'; // Import loreFiles for handleNavigation
+import { loreFiles } from './data-constants.js'; 
 
 // Declare UI elements globally within the module scope for accessibility
 const navLinks = document.querySelectorAll('.nav-link');
 const contentSections = document.querySelectorAll('.content-section');
-const userIdDisplay = document.getElementById('user-id-display'); // Sidebar user ID
+const userIdDisplay = document.getElementById('user-id-display'); 
 const loadingOverlay = document.getElementById('loading-overlay');
 const loreNoteTitle = document.getElementById('lore-note-title');
 const loreNoteContent = document.getElementById('lore-note-content');
-const loreNotesList = document.getElementById('lore-notes-list'); // Used for highlighting in lore library
+const loreNotesList = document.getElementById('lore-notes-list'); 
 
-// New UI elements for login/logout
+// New UI elements for login/logout (created once and appended)
 const authControlsContainer = document.createElement('div');
 authControlsContainer.className = "p-4 text-xs text-slate-400 border-t border-slate-700 flex flex-col space-y-2";
 authControlsContainer.innerHTML = `
@@ -39,6 +39,7 @@ const authStatusText = document.getElementById('auth-status-text');
 const authErrorMessage = document.getElementById('auth-error-message');
 const userIdDisplayMain = document.getElementById('user-id-display-main'); 
 
+
 export function setupUI() {
     // Listen for authReady event to update UI and initialize managers
     document.addEventListener('authReady', (event) => {
@@ -50,12 +51,11 @@ export function setupUI() {
             document.getElementById('login-form').classList.add('hidden');
             logoutButton.classList.remove('hidden');
         } else {
-            authStatusText.textContent = 'Not logged in (Viewer)'; // Non-authenticated users can still view
-            document.getElementById('login-form').classList.remove('hidden'); // Ensure form is visible for login
+            authStatusText.textContent = 'Not logged in (Viewer)'; 
+            document.getElementById('login-form').classList.remove('hidden'); 
             logoutButton.classList.add('hidden');
         }
         
-        // Initialize deity manager with Firestore instance and editor status
         initializeDeityManager(db, userId, isEditor);
     });
 
@@ -85,14 +85,12 @@ export function setupUI() {
             authErrorMessage.textContent = `Error logging out: ${result.error}`;
             authErrorMessage.classList.remove('hidden');
         } else {
-            // Clear inputs on successful logout
             loginEmailInput.value = '';
             loginPasswordInput.value = '';
         }
         loadingOverlay.classList.add('hidden');
     });
 
-    // Home link already has an ID in index.html now
     const homeLink = document.getElementById('home-link'); 
     if (homeLink) {
         homeLink.addEventListener('click', (e) => {
@@ -115,7 +113,6 @@ export function setupUI() {
     setupLoreLibrary(loadingOverlay); 
 }
 
-// Global UI functions (e.g., charts, general navigation)
 function handleNavigation(hash) {
     if (!hash) hash = '#world';
 
@@ -126,8 +123,9 @@ function handleNavigation(hash) {
         const filePath = hash.substring('#lore-library:'.length);
         document.querySelector('a[href="#lore-library"]').classList.add('active'); 
         document.getElementById('lore-library').classList.add('active'); 
-        // Need to pass loreFiles imported from data-constants.js to fetchAndDisplayMarkdown for wikilink resolution
-        fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNoteTitle, loreNoteContent, loreFiles); // Pass loreFiles here
+        
+        // Pass loreNoteTitle, loreNoteContent, and loadingOverlay to fetchAndDisplayMarkdown
+        fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNoteTitle, loreNoteContent);
         
         document.querySelectorAll('#lore-notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
         const correspondingLink = document.querySelector(`#lore-notes-list a[data-filepath-raw="${filePath}"]`);

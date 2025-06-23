@@ -109,78 +109,145 @@ export async function fetchAndDisplayMarkdown(filePath, loadingOverlay, loreNote
         }
         const markdownText = await response.text();
         
-        // Custom Marked.js renderer for Obsidian-like features
-        const renderer = {
+        // Setup a *new* Marked.js renderer instance for each render to avoid conflicts
+        // and ensure the latest extensions/options are applied.
+        
+        // Define the wikilink extension directly here to access loreFiles implicitly
+        const wikilinkExtension = {
+            name: 'wikilink',
+            level: 'inline',
+            start(src) { return src.indexOf('[['); },
+            tokenizer(src, tokens) {
+                const rule = /^\[\[([^|\]]+?)(?:\|([^\]]+?))?\]\]/;
+                const match = rule.exec(src);
+                if (match) {
+                    let targetWikiName = match[1].trim(); 
+                    const githubBasePath = `https://github.com/Artemisiye/Kedem-World-Anvil/blob/main/notes/`;
+                    
+                    // Use loreFiles from the module scope (already imported)
+                    const resolvedFilePath = loreFiles.find(f => 
+                        f.toLowerCase() === `${targetWikiName.toLowerCase()}.md` || 
+                        f.toLowerCase().endsWith(`/${targetWikiName.toLowerCase()}.md`) ||
+                        f.toLowerCase().split('/').pop() === `${targetWikiName.toLowerCase()}.md`
+                    );
+                    
+                    let href;
+                    if (resolvedFilePath) {
+                        href = `#/lore-library:${resolvedFilePath}`; 
+                        return {
+                            type: 'wikilink',
+                            raw: match[0],
+                            page: targetWikiName,
+                            text: match[2] || targetWikiName.split('/').pop().replace(/([A-Z])/g, ' $1').trim(),
+                            href: href,
+                            isInternal: true,
+                            resolvedPath: resolvedFilePath
+                        };
+                    } else {
+                        const fallbackPath = targetWikiName.replace(/ /g, '%20');
+                        href = `${githubBasePath}${fallbackPath}.md`;
+                        return {
+                            type: 'wikilink',
+                            raw: match[0],
+                            page: targetWikiName,
+                            text: match[2] || targetWikiName.split('/').pop().replace(/([A-Z])/g, ' $1').trim(),
+                            href: href,
+                            isInternal: false
+                        };
+                    }
+                }
+            },
+            renderer(token) {
+                if (token.isInternal) {
+                    return `<a href="${token.href}" class="wikilink internal-wikilink" data-filepath="${token.resolvedPath}">${token.text}</a>`;
+                } else {
+                    return `<a href="${token.href}" class="wikilink" target="_blank">${token.text}</a>`;
+                }
+            }
+        };
+
+        const customRenderer = {
             paragraph(text) {
                 // Heuristic to detect YAML frontmatter lines or custom properties (tags, aliases, etc.)
-                if (text.startsWith('---') || text.startsWith('aliases:') || text.startsWith('tags:') || text.startsWith('NpcAggresion:') || text.startsWith('NpcTags:') || text.startsWith('Description::') || text.startsWith('BaseValue:') || text.startsWith('## Offerings:') || text.startsWith('## Favors:') || text.startsWith('## Starting Boon:')) {
-                    // Split lines and process them
-                    const lines = text.split('<br>');
-                    let formattedText = '';
+                if (text.startsWith('---') || text.includes('::') || text.startsWith('aliases:') || text.startsWith('tags:') || text.startsWith('NpcAggresion:') || text.startsWith('NpcTags:') || text.startsWith('BaseValue:') || text.startsWith('## Offerings:') || text.startsWith('## Favors:') || text.startsWith('## Starting Boon:')) {
+                    const lines = text.split('<br>'); // marked with breaks:true will use <br>
+                    let formattedHtml = '';
                     lines.forEach(line => {
                         line = line.trim();
-                        if (line === '---' || line.startsWith('aliases:') || line.startsWith('NpcAggresion:') || line.startsWith('NpcTags:') || line.startsWith('BaseValue:') || line.startsWith('## Offerings:') || line.startsWith('## Favors:') || line.startsWith('## Starting Boon:')) {
-                            // General styling for metadata lines
-                            formattedText += `<p class="text-sm text-slate-500 italic">${line}</p>`;
-                        } else if (line.startsWith('tags:')) {
-                            // Specific styling for 'tags:' line
-                            const tagsContent = line.substring(5).trim();
-                            const tags = tagsContent.split('-').map(t => t.trim()).filter(t => t);
-                            if (tags.length > 0) {
-                                formattedText += `<p class="text-sm text-slate-500 italic">tags: ${tags.map(tag => `<span class="inline-block bg-slate-200 text-slate-700 text-xs font-semibold px-2 py-0.5 rounded-full mr-1">${tag}</span>`).join('')}</p>`;
-                            } else {
-                                formattedText += `<p class="text-sm text-slate-500 italic">${line}</p>`; // Fallback for empty tags
+                        if (line === '---') {
+                            formattedHtml += `<hr class="my-2 border-slate-300">`; 
+                        } else if (line.startsWith('aliases:')) {
+                            const aliases = line.substring('aliases:'.length).trim();
+                            if (aliases) {
+                                formattedHtml += `<p class="metadata-line"><strong>Aliases:</strong> ${aliases}</p>`;
                             }
-                        } else if (line.startsWith('- ')) {
-                            // List items for tags under 'tags:' block or other lists
-                            formattedText += `<span class="inline-block bg-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-0.5 rounded-full mr-2 mb-1">${line.substring(2).trim()}</span>`;
+                        } else if (line.startsWith('tags:')) {
+                            const tagsContent = line.substring('tags:'.length).trim();
+                            const tags = tagsContent.split(/[\s,]+-/).map(t => t.replace('-', '').trim()).filter(t => t); 
+                            if (tags.length > 0) {
+                                formattedHtml += `<p class="metadata-line"><strong>Tags:</strong> ${tags.map(tag => `<span class="tag-chip">${tag}</span>`).join('')}</p>`;
+                            }
+                        } else if (line.includes('::')) { 
+                            const [propName, propValue] = line.split('::', 2).map(s => s.trim());
+                            if (propName && propValue) {
+                                formattedHtml += `<p class="property-line"><strong>${propName}:</strong> ${propValue}</p>`;
+                            }
+                        } else if (line.startsWith('## ')) { 
+                             formattedHtml += `<h4 class="text-md font-semibold text-teal-700 mt-3 mb-1">${line.substring(3).trim()}</h4>`;
+                        } else if (line.startsWith('- ') && !line.startsWith('--')) { 
+                             formattedHtml += `<p class="text-sm ml-4">• ${line.substring(2).trim()}</p>`; 
+                        } else if (line.startsWith('BaseValue:')) {
+                            formattedHtml += `<p class="property-line"><strong>${line.split(':')[0].trim()}:</strong> ${line.split(':')[1].trim()}</p>`;
                         }
                          else {
-                            formattedText += `<p>${line}</p>`; // Default paragraph
+                            formattedHtml += `<p>${line}</p>`; 
                         }
                     });
-                    return `<div class="mb-2">${formattedText}</div>`;
+                    return formattedHtml; 
                 }
                 // Handle image syntax like ![[Map.png]]
                 if (text.startsWith('![[')) {
                     const imgFileName = text.match(/!\[\[(.*?)\]\]/);
                     if (imgFileName && imgFileName[1]) {
-                        // Assume images are in the same folder as the markdown or directly in the notes root if not specified.
-                        // This is a heuristic and might need refinement for complex image paths.
+                        const currentFileDir = filePath.substring(0, filePath.lastIndexOf('/') + 1); 
                         const imgPathBase = `https://raw.githubusercontent.com/Artemisiye/Kedem-World-Anvil/main/notes/`;
+                        
                         let imageSrc = `${imgPathBase}${imgFileName[1]}`;
-                        // If the markdown file is nested, try to resolve the image relative to it.
-                        const fileDir = filePath.substring(0, filePath.lastIndexOf('/') + 1);
-                        if (fileDir !== '' && !imgFileName[1].includes('/')) { // If image is not absolute path and file is nested
-                            imageSrc = `${imgPathBase}${fileDir}${imgFileName[1]}`;
+                        if (imgFileName[1].includes('/')) {
+                            imageSrc = `${imgPathBase}${imgFileName[1]}`;
+                        } else if (currentFileDir) {
+                            imageSrc = `${imgPathBase}${currentFileDir}${imgFileName[1]}`;
                         }
-
+                        
                         return `<p><img src="${imageSrc}" alt="${imgFileName[1]}" class="max-w-full h-auto rounded-lg shadow-md mx-auto my-4"></p>`;
                     }
                 }
-                return `<p>${text}</p>`; // Default paragraph rendering
+                return `<p>${text}</p>`; 
             }
         };
 
-        marked.use({ renderer });
-        marked.setOptions({ breaks: true }); // Ensure breaks option is always set for this parser instance
+        const markdownParser = new marked.Marked({ 
+            breaks: true, 
+            renderer: new marked.Renderer() 
+        });
+        markdownParser.use({ extensions: [wikilinkExtension] });
+        markdownParser.use({ renderer: customRenderer }); 
+
 
         loreNoteTitle.textContent = displayName;
-        loreNoteContent.innerHTML = marked.parse(markdownText);
+        loreNoteContent.innerHTML = markdownParser.parse(markdownText); 
         
-        // Re-attach event listeners for internal wikilinks after parsing
         loreNoteContent.querySelectorAll('a.internal-wikilink').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const targetFilePath = e.target.dataset.filepath;
                 if (targetFilePath) {
-                    // Update URL hash and trigger navigation
-                    history.pushState(null, '', `#lore-library:${targetFilePath}`);
-                    // Fetch and display the new note
-                    fetchAndDisplayMarkdown(targetFilePath, loadingOverlay, loreNoteTitle, loreNoteContent, allLoreFiles); // Pass allLoreFiles
-                    // Highlight the corresponding link in the sidebar
+                    history.pushState(null, '', targetFilePath); 
+                    // Pass current HTML elements for Lore Library to avoid re-querying
+                    fetchAndDisplayMarkdown(targetFilePath.substring('#lore-library:'.length), loadingOverlay, loreNoteTitle, loreNoteContent);
+                    
                     document.querySelectorAll('#lore-notes-list a').forEach(el => el.classList.remove('bg-slate-300', 'font-semibold'));
-                    const correspondingLink = document.querySelector(`#lore-notes-list a[data-filepath-raw="${targetFilePath}"]`);
+                    const correspondingLink = document.querySelector(`#lore-notes-list a[data-filepath-raw="${targetFilePath.substring('#lore-library:'.length)}"]`);
                     if (correspondingLink) {
                         correspondingLink.classList.add('bg-slate-300', 'font-semibold');
                     }
