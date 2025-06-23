@@ -1,8 +1,8 @@
 // ui-manager.js
-import { db, currentUserId, auth, signInUser, signOutUser } from './firebase-init.js'; 
-import { initializeDeityManager } from './deity-manager.js'; 
-import { setupNoteLibrary, fetchAndDisplayNote } from './note-library-manager.js'; 
-import { noteFiles } from './data-constants.js'; 
+import { db, currentUserId, auth, signInUser, signOutUser } from './firebase-init.js';
+import { initializeDeityManager } from './deity-manager.js';
+import { setupNoteLibrary, fetchAndDisplayNote } from './note-library-manager.js';
+import { noteFiles } from './data-constants.js';
 
 // Global UI elements that are always present (sidebar, loading overlay, auth controls)
 const navLinks = document.querySelectorAll('.nav-link');
@@ -25,14 +25,22 @@ authControlsContainer.innerHTML = `
     </div>
     <button id="logout-button" class="w-full bg-slate-600 text-white py-2 rounded-md hover:bg-slate-700 transition-colors duration-200 text-sm font-semibold hidden">Logout</button>
 `;
-document.querySelector('aside').appendChild(authControlsContainer);
+// Append auth controls directly here. This runs as the script loads, before DOMContentLoaded.
+// The sidebar element must exist in the HTML for this to work.
+const sidebar = document.querySelector('aside');
+if (sidebar) {
+    sidebar.appendChild(authControlsContainer);
+} else {
+    console.error("Sidebar element (<aside>) not found. Auth controls cannot be appended.");
+}
+
 
 const loginEmailInput = document.getElementById('login-email');
 const loginPasswordInput = document.getElementById('login-password');
 const loginButton = document.getElementById('login-button');
 const logoutButton = document.getElementById('logout-button');
 const authStatusText = document.getElementById('auth-status-text');
-const userIdDisplayMain = document.getElementById('user-id-display-main'); 
+const userIdDisplayMain = document.getElementById('user-id-display-main');
 
 /**
  * Main setup function called on DOMContentLoaded for both pages.
@@ -40,20 +48,25 @@ const userIdDisplayMain = document.getElementById('user-id-display-main');
  */
 export function setupUI() {
     // Determine current page based on filename
-    const currentPage = window.location.pathname.split('/').pop(); 
+    const currentPage = window.location.pathname.split('/').pop();
     console.log(`Current page: ${currentPage}`);
 
     // Set up global navigation listeners
     setupGlobalNav(currentPage);
 
     // Set up auth listeners
-    setupAuthControls(currentPage); 
+    setupAuthControls(currentPage);
 
     // Page-specific initializations
-    if (currentPage === 'explorer.html' || currentPage === '') { 
+    if (currentPage === 'explorer.html' || currentPage === '') {
         initExplorerPage();
     } else if (currentPage === 'note-library.html') {
-        initNoteLibraryPage();
+        // Ensure DOM is fully ready for Note Library specific elements
+        // This setTimeout is a defensive measure for intermittent issues,
+        // as DOMContentLoaded should generally be sufficient.
+        setTimeout(() => {
+            initNoteLibraryPage();
+        }, 0); // Execute as soon as possible after current call stack
     } else {
         console.warn(`Unknown page: ${currentPage}. No specific UI initialization.`);
     }
@@ -66,7 +79,7 @@ export function setupUI() {
 function setupGlobalNav(currentPage) {
     // Remove active class from all nav links first
     navLinks.forEach(link => {
-        link.classList.remove('active'); 
+        link.classList.remove('active');
     });
 
     // Highlight the appropriate navigation link/text based on the current page
@@ -81,18 +94,18 @@ function setupGlobalNav(currentPage) {
         // For note-library.html, the 'Note Library' is a static text with specific styling
         const noteLibraryStaticText = document.querySelector('.sidebar-active-text');
         if (noteLibraryStaticText) {
-            noteLibraryStaticText.classList.add('active'); 
+            noteLibraryStaticText.classList.add('active');
         }
         // Ensure no other .nav-link is active on this page if it's meant to be static
         navLinks.forEach(link => link.classList.remove('active'));
     }
 
     // Handle home link click
-    const homeLink = document.getElementById('home-link'); 
+    const homeLink = document.getElementById('home-link');
     if (homeLink) {
         homeLink.addEventListener('click', (e) => {
             e.preventDefault();
-            window.location.href = 'explorer.html#world'; 
+            window.location.href = 'explorer.html#world';
         });
     }
 
@@ -100,12 +113,12 @@ function setupGlobalNav(currentPage) {
         link.addEventListener('click', (e) => {
             const currentPageName = window.location.pathname.split('/').pop();
 
-            // Handle internal SPA navigation for explorer.html 
-            if (link.getAttribute('href').startsWith('explorer.html#') && 
-                (currentPageName === 'explorer.html' || currentPageName === '')) { 
-                e.preventDefault(); 
+            // Handle internal SPA navigation for explorer.html
+            if (link.getAttribute('href').startsWith('explorer.html#') &&
+                (currentPageName === 'explorer.html' || currentPageName === '')) {
+                e.preventDefault();
                 window.location.hash = link.getAttribute('href').split('#')[1];
-            } 
+            }
         });
     });
 }
@@ -118,54 +131,68 @@ function setupAuthControls(currentPage) {
     document.addEventListener('authReady', (event) => {
         const { userId, db, auth, isEditor } = event.detail;
 
-        userIdDisplayMain.textContent = userId || 'Not available';
+        // Ensure elements exist before trying to update them
+        if (userIdDisplayMain) userIdDisplayMain.textContent = userId || 'Not available';
         if (userId) {
-            authStatusText.textContent = isEditor ? 'Editor (Logged In)' : 'Logged In (Viewer)';
-            document.getElementById('login-form').classList.add('hidden');
-            logoutButton.classList.remove('hidden');
+            if (authStatusText) authStatusText.textContent = isEditor ? 'Editor (Logged In)' : 'Logged In (Viewer)';
+            const loginForm = document.getElementById('login-form');
+            if (loginForm) loginForm.classList.add('hidden');
+            if (logoutButton) logoutButton.classList.remove('hidden');
         } else {
-            authStatusText.textContent = 'Not logged in (Viewer)'; 
-            document.getElementById('login-form').classList.remove('hidden'); 
-            logoutButton.classList.add('hidden');
+            if (authStatusText) authStatusText.textContent = 'Not logged in (Viewer)';
+            const loginForm = document.getElementById('login-form');
+            if (loginForm) loginForm.classList.remove('hidden');
+            if (logoutButton) logoutButton.classList.add('hidden');
         }
-        
+
         if (currentPage === 'explorer.html' || currentPage === '') {
             initializeDeityManager(db, userId, isEditor);
         }
     });
 
-    loginButton.addEventListener('click', async () => {
-        const email = loginEmailInput.value;
-        const password = loginPasswordInput.value;
-        const authErrorMessage = document.getElementById('auth-error-message'); 
-        authErrorMessage.classList.add('hidden'); 
-        if (email && password) {
-            loadingOverlay.classList.remove('hidden');
-            const result = await signInUser(email, password);
-            if (!result.success) {
-                authErrorMessage.textContent = `Error: ${result.error}`;
-                authErrorMessage.classList.remove('hidden');
+    if (loginButton) {
+        loginButton.addEventListener('click', async () => {
+            const email = loginEmailInput.value;
+            const password = loginPasswordInput.value;
+            const authErrorMessage = document.getElementById('auth-error-message');
+            if (authErrorMessage) authErrorMessage.classList.add('hidden');
+            if (email && password) {
+                if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+                const result = await signInUser(email, password);
+                if (!result.success) {
+                    if (authErrorMessage) {
+                        authErrorMessage.textContent = `Error: ${result.error}`;
+                        authErrorMessage.classList.remove('hidden');
+                    }
+                }
+                if (loadingOverlay) loadingOverlay.classList.add('hidden');
+            } else {
+                if (authErrorMessage) {
+                    authErrorMessage.textContent = "Please enter email and password.";
+                    authErrorMessage.classList.remove('hidden');
+                }
             }
-            loadingOverlay.classList.add('hidden');
-        } else {
-            authErrorMessage.textContent = "Please enter email and password.";
-            authErrorMessage.classList.remove('hidden');
-        }
-    });
+        });
+    }
 
-    logoutButton.addEventListener('click', async () => {
-        loadingOverlay.classList.remove('hidden');
-        const result = await signOutUser();
-        if (!result.success) {
-            const authErrorMessage = document.getElementById('auth-error-message'); 
-            authErrorMessage.textContent = `Error logging out: ${result.error}`;
-            authErrorMessage.classList.remove('hidden');
-        } else {
-            loginEmailInput.value = '';
-            loginPasswordInput.value = '';
-        }
-        loadingOverlay.classList.add('hidden');
-    });
+    if (logoutButton) {
+        logoutButton.addEventListener('click', async () => {
+            const authErrorMessage = document.getElementById('auth-error-message');
+            if (authErrorMessage) authErrorMessage.classList.add('hidden');
+            if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+            const result = await signOutUser();
+            if (!result.success) {
+                if (authErrorMessage) {
+                    authErrorMessage.textContent = `Error logging out: ${result.error}`;
+                    authErrorMessage.classList.remove('hidden');
+                }
+            } else {
+                if (loginEmailInput) loginEmailInput.value = '';
+                if (loginPasswordInput) loginPasswordInput.value = '';
+            }
+            if (loadingOverlay) loadingOverlay.classList.add('hidden');
+        });
+    }
 }
 
 /**
@@ -173,12 +200,12 @@ function setupAuthControls(currentPage) {
  */
 function initExplorerPage() {
     console.log("Initializing Explorer Page UI.");
-    const contentSections = document.querySelectorAll('.content-section'); 
+    const contentSections = document.querySelectorAll('.content-section');
 
     setupAttributesChart();
 
     window.addEventListener('hashchange', () => handleExplorerNavigation(window.location.hash));
-    handleExplorerNavigation(window.location.hash); 
+    handleExplorerNavigation(window.location.hash); // Initial load based on hash
 
     /**
      * Handles navigation within the Explorer page (SPA-style hash navigation).
@@ -189,7 +216,7 @@ function initExplorerPage() {
 
         // Remove active class from all content sections
         contentSections.forEach(section => section.classList.remove('active'));
-        
+
         const targetSectionId = hash.substring(1);
         const targetSection = document.getElementById(targetSectionId);
 
@@ -207,9 +234,9 @@ function initExplorerPage() {
             }
         } else {
             // Default to 'world' section if target not found
-            document.getElementById('world').classList.add('active'); 
+            document.getElementById('world').classList.add('active');
             document.querySelector('a[href="explorer.html#world"]').classList.add('active');
-            window.location.hash = '#world'; 
+            window.location.hash = '#world';
         }
 
         const sectionName = (targetSectionId.charAt(0).toUpperCase() + targetSectionId.slice(1)).replace('-', ' ');
@@ -222,17 +249,17 @@ function initExplorerPage() {
  */
 function initNoteLibraryPage() {
     console.log("Initializing Note Library Page UI.");
-    
+
     // Retrieve Note Library elements within this function scope for robustness
     const noteListElement = document.getElementById('note-list');
-    const noteTitleElement = document.getElementById('note-title'); 
+    const noteTitleElement = document.getElementById('note-title');
     const noteContentElement = document.getElementById('note-content');
-    const noteDisplayMainTitle = document.getElementById('note-display-title'); 
+    const noteDisplayMainTitle = document.getElementById('note-display-title');
 
     // Crucial check: Ensure all elements are found before proceeding
     if (!noteListElement || !noteTitleElement || !noteContentElement || !noteDisplayMainTitle) {
         console.error("Note Library UI elements (note-list, note-title, note-content, note-display-title) not found. Cannot initialize Note Library.");
-        loadingOverlay.classList.add('hidden');
+        if (loadingOverlay) loadingOverlay.classList.add('hidden');
         // Display a user-facing error message in the main content area
         const mainContentArea = document.querySelector('main');
         if (mainContentArea) {
@@ -242,14 +269,15 @@ function initNoteLibraryPage() {
                     <p>There was a problem loading the Note Library. Some required HTML elements were not found.</p>
                     <p>Please ensure all IDs in note-library.html match those expected by the JavaScript.</p>
                     <p>If the issue persists, try clearing your browser cache and refreshing the page.</p>
+                    <p class="mt-2 text-sm text-slate-500">Missing elements: ${[!noteListElement ? 'note-list' : '', !noteTitleElement ? 'note-title' : '', !noteContentElement ? 'note-content' : '', !noteDisplayMainTitle ? 'note-display-title' : ''].filter(Boolean).join(', ')}</p>
                 </div>
             `;
         }
         return; // Stop initialization if elements are not found
     }
-    
+
     // Pass the retrieved DOM elements to setupNoteLibrary
-    setupNoteLibrary(loadingOverlay, noteListElement, noteTitleElement, noteContentElement, noteDisplayMainTitle); 
+    setupNoteLibrary(loadingOverlay, noteListElement, noteTitleElement, noteContentElement, noteDisplayMainTitle);
 
     window.addEventListener('hashchange', () => handleNoteLibraryNavigation(window.location.hash));
     handleNoteLibraryNavigation(window.location.hash); // Initial load based on hash
@@ -266,32 +294,33 @@ function initNoteLibraryPage() {
         }
 
         let fileToDisplay = filePathFromHash;
-        if (filePathFromHash === '' || !noteFiles.includes(filePathFromHash)) { 
-            if (noteFiles.length > 0) { 
-                fileToDisplay = noteFiles[0]; 
+        if (filePathFromHash === '' || !noteFiles.includes(filePathFromHash)) {
+            if (noteFiles.length > 0) {
+                fileToDisplay = noteFiles[0];
             } else {
                 console.warn("No notes available in noteFiles array to display.");
-                noteDisplayMainTitle.textContent = "No Notes Available"; 
-                noteTitleElement.style.display = 'none'; 
-                noteContentElement.innerHTML = "<p>The note library is empty or could not be loaded.</p>"; 
-                loadingOverlay.classList.add('hidden');
+                if (noteDisplayMainTitle) noteDisplayMainTitle.textContent = "No Notes Available";
+                if (noteTitleElement) noteTitleElement.style.display = 'none';
+                if (noteContentElement) noteContentElement.innerHTML = "<p>The note library is empty or could not be loaded.</p>";
+                if (loadingOverlay) loadingOverlay.classList.add('hidden');
                 return;
             }
         }
-        
-        fetchAndDisplayNote(fileToDisplay, loadingOverlay, noteTitleElement, noteContentElement, noteDisplayMainTitle); 
-        
-        if (noteListElement) { 
-            noteListElement.querySelectorAll('.note-list-item-link').forEach(el => el.classList.remove('active-note')); 
-            const correspondingLink = noteListElement.querySelector(`a[data-filepath-raw="${fileToDisplay}"]`); 
+
+        fetchAndDisplayNote(fileToDisplay, loadingOverlay, noteTitleElement, noteContentElement, noteDisplayMainTitle);
+
+        if (noteListElement) {
+            noteListElement.querySelectorAll('.note-list-item-link').forEach(el => el.classList.remove('active-note'));
+            const correspondingLink = noteListElement.querySelector(`a[data-filepath-raw="${fileToDisplay}"]`);
             if (correspondingLink) {
-                correspondingLink.classList.add('active-note'); 
+                correspondingLink.classList.add('active-note');
                 let parentUl = correspondingLink.closest('ul');
-                while (parentUl && !parentUl.classList.contains('root-ul')) { 
+                // Traverse up to show parent folders if they are hidden
+                while (parentUl && !parentUl.classList.contains('root-ul')) {
                     if (parentUl.classList.contains('hidden')) {
                         parentUl.classList.remove('hidden');
                         const folderToggle = parentUl.previousElementSibling;
-                        if (folderToggle && folderToggle.classList.contains('note-list-folder-toggle')) { 
+                        if (folderToggle && folderToggle.classList.contains('note-list-folder-toggle')) {
                              folderToggle.querySelector('.toggle-icon').textContent = '▼';
                         }
                     }
@@ -304,9 +333,9 @@ function initNoteLibraryPage() {
         const breadcrumbs = [{ name: 'Home', path: 'explorer.html#world' }, { name: 'Note Library', path: 'note-library.html' }];
         pathParts.forEach((part, index) => {
             const currentPathSegment = pathParts.slice(0, index + 1).join('/');
-            const displayName = part.replace(/([A-Z])/g, ' $1').trim(); 
+            const displayName = part.replace(/([A-Z])/g, ' $1').trim();
             if (index === pathParts.length - 1) {
-                breadcrumbs.push({ name: displayName }); 
+                breadcrumbs.push({ name: displayName });
             } else {
                 breadcrumbs.push({ name: displayName, path: `note-library.html#note-library:${currentPathSegment}.md` });
             }
@@ -324,13 +353,13 @@ function updateBreadcrumbs(crumbs) {
         console.warn("Breadcrumbs container not found.");
         return;
     }
-    breadcrumbsContainer.innerHTML = ''; 
+    breadcrumbsContainer.innerHTML = '';
     crumbs.forEach((crumb, index) => {
         const span = document.createElement('span');
         if (index > 0) {
-            span.innerHTML += ' &gt; '; 
+            span.innerHTML += ' &gt; ';
         }
-        if (index === crumbs.length - 1 || !crumb.path) { 
+        if (index === crumbs.length - 1 || !crumb.path) {
             span.innerHTML += `<span class="text-slate-700 font-semibold">${crumb.name}</span>`;
         } else {
             span.innerHTML += `<a href="${crumb.path}" class="text-amber-600 hover:underline">${crumb.name}</a>`;
@@ -343,7 +372,7 @@ function updateBreadcrumbs(crumbs) {
 // Function for the attributes chart (only on explorer page)
 function setupAttributesChart() {
     const ctx = document.getElementById('attributesChart');
-    if (!ctx) { 
+    if (!ctx) {
         return;
     }
     const chartContext = ctx.getContext('2d');
@@ -354,11 +383,11 @@ function setupAttributesChart() {
             labels: ['Health', 'Resilience', 'Endurance (Max Energy)', 'Stamina (Energy Regen)'],
             datasets: [{
                 label: 'Base Attribute Concepts',
-                data: [1000, 100, 100, 5], 
+                data: [1000, 100, 100, 5],
                 backgroundColor: [
-                    'rgba(239, 68, 68, 0.6)', 
-                    'rgba(34, 197, 94, 0.6)', 
-                    'rgba(59, 130, 246, 0.6)', 
+                    'rgba(239, 68, 68, 0.6)',
+                    'rgba(34, 197, 94, 0.6)',
+                    'rgba(59, 130, 246, 0.6)',
                     'rgba(251, 191, 36, 0.6)',
                 ],
                 borderColor: [

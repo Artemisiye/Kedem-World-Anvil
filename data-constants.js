@@ -46,7 +46,7 @@ export const initialDeityDataFallback = [
 // All note files from the 'notes' directory in the GitHub repository
 // IMPORTANT: Keep this list updated manually to include new notes you want displayed.
 // Paths are relative to the /notes/ directory in your GitHub repo.
-export const noteFiles = [
+export const noteFiles = [ 
     // Gameplay
     'Gameplay/Ascending to Godhood.md',
     'Gameplay/Early Game.md',
@@ -157,9 +157,6 @@ export const noteFiles = [
     'Magic/Spells/Haste.md',
     'Magic/Spells/Life Toll.md',
     'Magic/Spells/Mana Blast.md',
-    
-    // Melee Combat (assuming Melee Combat.md exists in the notes root or is a folder)
-    'Melee Combat.md', 
 
     // Player Mechanics
     'Player Mechanics/Attribute.md',
