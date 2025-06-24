@@ -1,5 +1,8 @@
 // markdown-parser.js
 
+// --- MODIFIED: Import noteFiles directly from data-constants ---
+import { noteFiles } from './data-constants.js';
+
 // Marked.js is globally available via CDN, no explicit import needed for 'marked'.
 
 // Configure marked to handle single newlines as breaks by default
@@ -20,8 +23,8 @@ marked.use({
         let targetWikiName = match[1].trim(); 
         const githubBasePath = `https://raw.githubusercontent.com/Artemisiye/Kedem-World-Anvil/main/notes/`;
         
-        // Access window.noteFiles (exported from data-constants.js and attached to window in index.html)
-        const resolvedFilePath = window.noteFiles.find(f => 
+        // --- MODIFIED: Access imported 'noteFiles' directly, not from window object ---
+        const resolvedFilePath = noteFiles.find(f => 
             f.toLowerCase() === `${targetWikiName.toLowerCase()}.md` || 
             f.toLowerCase().endsWith(`/${targetWikiName.toLowerCase()}.md`) ||
             f.toLowerCase().split('/').pop().replace('.md', '') === targetWikiName.toLowerCase() // Handles "Will Power" -> "Will Power.md"
@@ -30,7 +33,7 @@ marked.use({
         let href;
         if (resolvedFilePath) {
             // If found in our list, it's an internal SPA link to the note-library.html page
-            href = `note-library.html#note-library:${resolvedFilePath}`; // IMPORTANT: Updated target to the new note-library page
+            href = `note-library.html#note-library:${resolvedFilePath}`;
             return {
                 type: 'wikilink',
                 raw: match[0],

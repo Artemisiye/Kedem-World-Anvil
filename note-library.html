@@ -14,377 +14,122 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        /* CSS Variables will be populated by JavaScript on load */
+        /* CSS Variables for theming */
         :root {
-            /* Fallback values or base values, actual values loaded from JS */
-            --bg-color: #f8fafc;
-            --text-color: #334155;
-            --sidebar-bg: #1e293b;
-            --sidebar-text: #f1f5f9;
-            --sidebar-border: #475569;
-            --nav-hover-bg: #334155;
-            --nav-active-bg: #fbbf24;
-            --nav-active-text: #1e293b;
-            --note-bg: #ffffff;
-            --note-border: #e2e8f0;
-            --properties-bg: #f1f5f9;
-            --properties-border: #e2e8f0;
-            --properties-title-color: #475569;
-            --properties-label-color: #1e293b;
-            --tag-chip-bg: #cbd5e1;
-            --tag-chip-text: #1e293b;
-            --wikilink-color: #2563eb;
-            --broken-link-color: #94a3b8;
-            --loading-overlay-bg: rgba(255, 255, 255, 0.8);
-
-            /* Font Sizes from appearance-settings.js */
-            --font-h1: 32px;
-            --font-h2: 24px;
-            --font-h3: 18px;
-            --font-h4: 16px;
-            --font-h5: 13px;
-            --font-h6: 10px;
-            --font-p: 16px;
+            /* Fallback values */
+            --bg-color: #f8fafc; --text-color: #334155; --sidebar-bg: #1e293b;
+            --sidebar-text: #f1f5f9; --sidebar-border: #475569; --nav-hover-bg: #334155;
+            --nav-active-bg: #fbbf24; --nav-active-text: #1e293b; --note-bg: #ffffff;
+            --note-border: #e2e8f0; --properties-bg: #f1f5f9; --properties-border: #e2e8f0;
+            --properties-title-color: #475569; --properties-label-color: #1e293b;
+            --tag-chip-bg: #cbd5e1; --tag-chip-text: #1e293b; --wikilink-color: #2563eb;
+            --broken-link-color: #94a3b8; --loading-overlay-bg: rgba(255, 255, 255, 0.8);
+            --font-h1: 32px; --font-h2: 24px; --font-h3: 18px; --font-h4: 16px;
+            --font-h5: 13px; --font-h6: 10px; --font-p: 16px;
         }
-
         body {
             font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            background-color: var(--bg-color); color: var(--text-color);
             transition: background-color 0.3s ease, color 0.3s ease;
         }
-        /* Custom scrollbar for better appearance, always visible to reserve space */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px; /* For horizontal scrollbars */
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent; /* Make track transparent for overlay effect */
-        }
-        ::-webkit-scrollbar-thumb {
-            background: var(--sidebar-border); /* using a variable for thumb color */
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--properties-title-color); /* darker on hover */
-        }
-        /* Active nav link styling for main pages/sections */
-        .nav-link.active {
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--sidebar-border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--properties-title-color); }
+        
+        /* Navigation Link Styles */
+        .nav-link.active, .sidebar-active-text {
             background-color: var(--nav-active-bg);
             color: var(--nav-active-text);
             font-weight: 600;
         }
-        /* Styles for markdown content */
-        .markdown-content h1 { font-size: var(--font-h1); font-weight: 700; margin-bottom: 1rem; color: var(--text-color); }
-        .markdown-content h2 { font-size: var(--font-h2); font-weight: 600; margin-bottom: 0.75rem; color: var(--text-color); }
-        .markdown-content h3 { font-size: var(--font-h3); font-weight: 600; margin-bottom: 0.5rem; color: var(--text-color); }
-        .markdown-content h4 { font-size: var(--font-h4); font-weight: 600; margin-bottom: 0.5rem; color: var(--text-color); }
-        .markdown-content h5 { font-size: var(--font-h5); font-weight: 600; margin-bottom: 0.5rem; color: var(--text-color); }
-        .markdown-content h6 { font-size: var(--font-h6); font-weight: 600; margin-bottom: 0.5rem; color: var(--text-color); }
-        .markdown-content p { font-size: var(--font-p); margin-bottom: 0.75rem; line-height: 1.6; color: var(--text-color); }
-        .markdown-content ul, .markdown-content ol { list-style-position: inside; margin-bottom: 0.75rem; padding-left: 1.5rem; }
-        .markdown-content ul li { list-style-type: disc; }
-        .markdown-content ol li { list-style-type: decimal; }
-        .markdown-content b, .markdown-content strong { font-weight: 700; }
-        .markdown-content em, .markdown-content i { font-style: italic; }
-        .markdown-content hr { border-top: 1px solid var(--note-border); margin: 1.5rem 0; }
-        .markdown-content pre { background-color: var(--properties-bg); padding: 1rem; border-radius: 0.5rem; overflow-x: auto; color: var(--text-color); }
-        .markdown-content code { background-color: var(--tag-chip-bg); padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-family: monospace; color: var(--text-color); }
-        .markdown-content blockquote { border-left: 4px solid var(--properties-title-color); padding-left: 1rem; margin: 1rem 0; color: var(--properties-title-color); }
-        .markdown-content table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
-        .markdown-content th, .markdown-content td { border: 1px solid var(--note-border); padding: 0.75rem; text-align: left; color: var(--text-color); }
-        .markdown-content th { background-color: var(--properties-bg); }
-        /* Style for wikilinks */
-        .markdown-content a.wikilink {
-            color: var(--wikilink-color);
-            text-decoration: none;
-            font-weight: 500;
-        }
-        .markdown-content a.wikilink:hover {
-            text-decoration: underline;
-        }
-
-        /* Specific styling for properties box */
-        .properties-box {
-            background-color: var(--properties-bg);
-            border: 1px solid var(--properties-border);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            line-height: 1.5; /* Adjusted for better readability inside box */
-            color: var(--text-color);
-        }
-        .properties-box-title {
-            font-size: 0.875rem; /* text-sm */
-            font-weight: 600;
-            color: var(--properties-title-color);
-            margin-bottom: 0.75rem;
-            display: flex;
-            align-items: center;
-        }
-        .properties-item {
-            display: flex;
-            align-items: flex-start; /* Align items to start for multi-line values */
-            margin-bottom: 0.5rem;
-            font-size: 0.875rem; /* text-sm */
-            color: var(--text-color);
-        }
-        .properties-item:last-child {
-            margin-bottom: 0;
-        }
-        .properties-label {
-            font-weight: 500; /* font-medium */
-            color: var(--properties-label-color);
-            width: 80px; /* Fixed width for labels */
-            flex-shrink: 0; /* Prevent label from shrinking */
-            margin-right: 0.5rem;
-            padding-top: 0.125rem; /* Small padding for vertical alignment */
-        }
-        .properties-value {
-            flex-grow: 1;
-            display: flex; /* For tags, to allow flex wrapping */
-            flex-wrap: wrap; /* Allow tags to wrap */
-            gap: 0.25rem; /* Gap between tags */
-        }
-        .tag-chip {
-            display: inline-flex; /* Use inline-flex for better alignment */
-            align-items: center;
-            background-color: var(--tag-chip-bg);
-            color: var(--tag-chip-text);
-            font-size: 0.75rem; /* text-xs */
-            font-weight: 500;
-            padding: 0.2rem 0.6rem;
-            border-radius: 4px; /* Slightly less rounded than full for a squarer look */
-            line-height: 1; /* Adjust line height for better vertical centering */
-            height: 1.5rem; /* Fixed height for consistent tag size */
-        }
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: var(--loading-overlay-bg);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            font-size: 1.5rem;
-            color: #1e293b;
-        }
-        /* Styling for the note list items to fit the sidebar */
-        .note-list-item-link,
-        .note-list-folder-toggle {
-            display: flex; /* Use flex to align icon and text */
-            align-items: center;
-            padding: 0.25rem 0.5rem; /* Adjusted padding to be more compact */
-            border-radius: 0.25rem; /* Slightly less rounded */
-            color: var(--sidebar-text);
-            transition: background-color 0.2s, color 0.2s;
-            text-decoration: none;
-            width: 100%; /* Make them take full width of their LI parent */
-            box-sizing: border-box; /* Include padding in width calculation */
-
-            /* Text overflow properties */
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            line-height: 1.5; /* Ensure good line height */
-        }
-        .note-list-item-link:hover,
-        .note-list-folder-toggle:hover {
-            background-color: var(--nav-hover-bg);
-        }
-        .note-list-item-link.active-note {
-            background-color: var(--nav-active-bg);
-            color: var(--nav-active-text);
-            font-weight: 400; /* No bold */
-        }
-        .note-list-folder-toggle {
-            cursor: pointer;
-            font-weight: 400; /* No bold */
-            user-select: none;
-        }
-        .toggle-icon {
-            margin-right: 0.5rem; /* mr-2 */
-            width: 1rem; /* Fixed width for icon */
-            flex-shrink: 0; /* Prevent icon from shrinking */
-            transform-origin: center center; /* Ensure rotation is from center */
-            transition: transform 0.15s ease-in-out; /* Smooth rotation */
-            color: var(--sidebar-text);
-        }
-        .toggle-icon.rotated {
-            transform: rotate(90deg);
-        }
-        /* Styling for the nested ULs to create the indent line */
-        .folder-item-sub-list {
-            margin-left: 2.00rem; /* Increased indent to 2.00rem */
-            border-left: 1px solid var(--sidebar-border); /* slate-600 border */
-            padding-left: 0.25rem; /* Padding for content inside the bordered area */
-            padding-top: 0.25rem; /* Small padding at the top of the sub-list */
-            padding-bottom: 0.25rem; /* Small padding at the bottom of the sub-list */
-        }
-        /* Ensure LI elements within the nested UL do not add extra padding,
-           their padding is handled by the link/toggle inside */
-        .folder-item-sub-list > li {
-            padding-left: 0;
-        }
-        /* Specific styling for the 'Note Library' active text in sidebar */
         .sidebar-active-text {
-            background-color: var(--nav-active-bg);
-            color: var(--nav-active-text);
-            font-weight: 600;
-            display: block;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            user-select: none;
+             display: block; padding: 0.5rem 1rem; border-radius: 0.5rem; user-select: none;
         }
 
-        /* Adjust the note list container's padding to make the scrollbar feel more overlay */
-        #note-list-container {
-            padding-right: 0.25rem; /* Slightly reduce padding to give scrollbar more "hover" room */
-            overflow-y: scroll; /* Force scrollbar to always be present */
-        }
-        /* Also apply to the main note content area */
-        #note-content {
-            overflow-y: scroll; /* Force scrollbar to always be present */
-            padding-right: 0.25rem; /* Same logic for content area */
-        }
+        /* Markdown content styles */
+        .markdown-content h1 { font-size: var(--font-h1); } .markdown-content h2 { font-size: var(--font-h2); }
+        .markdown-content h3 { font-size: var(--font-h3); } .markdown-content h4 { font-size: var(--font-h4); }
+        .markdown-content p { font-size: var(--font-p); line-height: 1.6; }
+        .markdown-content ul, .markdown-content ol { padding-left: 1.5rem; }
+        .markdown-content pre { background-color: var(--properties-bg); padding: 1rem; border-radius: 0.5rem; }
+        .markdown-content code { background-color: var(--tag-chip-bg); padding: 0.2rem 0.4rem; border-radius: 0.25rem; }
+        .markdown-content a.wikilink { color: var(--wikilink-color); text-decoration: none; font-weight: 500; }
+        .markdown-content a.wikilink:hover { text-decoration: underline; }
 
-        /* Theming for main elements (using CSS variables) */
-        .flex.h-screen > aside { /* Target the sidebar */
-            background-color: var(--sidebar-bg);
-            color: var(--sidebar-text);
-            border-right-color: var(--sidebar-border);
-        }
-        aside .border-b {
-            border-color: var(--sidebar-border);
-        }
-        aside .text-teal-300 { /* For the 'Notes' title in sidebar */
-            color: #2dd4bf; /* Fixed teal, as it's not in the general theme palette yet */
-        }
-
-        main {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-        }
-        main #note-display-title {
-            color: var(--text-color);
-            border-color: var(--nav-active-bg);
-        }
-        main #note-content {
-            background-color: var(--note-bg);
-            color: var(--text-color);
-        }
-        main #chat-panel {
-            background-color: var(--note-bg);
-            color: var(--text-color);
-        }
-        main #chat-panel div[class*="bg-slate-50"] { /* Target specific chat panel div */
-            background-color: var(--properties-bg);
-            border-color: var(--properties-border);
-            color: var(--text-color);
-        }
-        main #chat-panel p.italic { /* Chat panel italic text */
-            color: var(--properties-title-color);
-        }
-        main #chat-panel input { /* Chat panel input */
-            background-color: var(--properties-bg);
-            border-color: var(--properties-border);
-            color: var(--text-color);
-        }
-        main nav#breadcrumbs-container span { /* Breadcrumbs text color */
-            color: var(--text-color);
-        }
+        /* Properties box styles */
+        .properties-box { background-color: var(--properties-bg); border: 1px solid var(--properties-border); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1.5rem; }
+        .properties-box-title { font-weight: 600; color: var(--properties-title-color); margin-bottom: 0.75rem; display: flex; align-items: center; }
+        .properties-item { display: flex; align-items: flex-start; margin-bottom: 0.5rem; font-size: 0.875rem; }
+        .properties-label { font-weight: 500; color: var(--properties-label-color); width: 80px; flex-shrink: 0; margin-right: 0.5rem; }
+        .properties-value { flex-grow: 1; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+        .tag-chip { display: inline-flex; background-color: var(--tag-chip-bg); color: var(--tag-chip-text); font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px; }
+        
+        /* Loading Overlay */
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--loading-overlay-bg); display: flex; justify-content: center; align-items: center; z-index: 100; }
+        
+        /* Note list specific styles */
+        .note-list-item-link, .note-list-folder-toggle { display: flex; align-items: center; padding: 0.25rem 0.5rem; border-radius: 0.25rem; color: var(--sidebar-text); transition: background-color 0.2s, color 0.2s; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .note-list-item-link:hover, .note-list-folder-toggle:hover { background-color: var(--nav-hover-bg); }
+        .note-list-item-link.active-note { background-color: var(--nav-active-bg); color: var(--nav-active-text); }
+        .note-list-folder-toggle { cursor: pointer; user-select: none; }
+        .toggle-icon { margin-right: 0.5rem; width: 1rem; flex-shrink: 0; transition: transform 0.15s ease-in-out; }
+        .toggle-icon.rotated { transform: rotate(90deg); }
+        .folder-item-sub-list { margin-left: 1.25rem; border-left: 1px solid var(--sidebar-border); padding-left: 0.75rem; }
     </style>
 </head>
 <body class="antialiased">
 
-    <!-- Loading Overlay for general app loading -->
-    <div id="loading-overlay" class="loading-overlay hidden">
-        Loading data...
-    </div>
+    <div id="loading-overlay" class="loading-overlay hidden">Loading data...</div>
 
     <div class="flex h-screen bg-slate-50">
-        <!-- Sidebar Navigation -->
-        <aside class="w-64 flex flex-col fixed h-full">
-            <div class="h-16 flex items-center justify-center border-b">
-                <a href="explorer.html#world" id="home-link" class="text-2xl font-bold text-amber-400 hover:text-amber-300 transition-colors duration-200">Kedem Anvil</a>
-            </div>
-
-            <nav class="flex-none px-4 py-4 space-y-2">
-                <!-- Only link to the Explorer page -->
-                <a href="explorer.html#world" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">The World (Explorer)</a>
-                <!-- Static text for the current page (Note Library) -->
-                <span class="sidebar-active-text flex items-center">Note Library</span>
-            </nav>
-
-            <!-- Note-specific sidebar content below main navigation -->
-            <div class="flex-auto p-4 border-t" id="note-list-container">
-                <h3 class="text-xl font-bold text-teal-300 mb-3">Notes</h3>
-                <ul id="note-list" class="space-y-1">
-                    <!-- Note list will be injected here by JavaScript -->
-                </ul>
-            </div>
-            <!-- Auth controls are now dynamically added by ui-manager.js -->
-        </aside>
+        <!-- MODIFIED: Sidebar is now a placeholder that will be loaded dynamically -->
+        <div id="sidebar-placeholder"></div>
 
         <!-- Main Content -->
-        <main class="flex-1 ml-64 p-6 sm:p-8 lg:p-12">
-            <!-- Breadcrumbs will be injected here -->
-            <nav id="breadcrumbs-container" class="text-sm text-slate-500 mb-4">
-                <!-- Breadcrumbs will be dynamically inserted here by JavaScript -->
-            </nav>
+        <main class="flex-1 ml-64 p-6 sm:p-8 lg:p-12 h-screen flex flex-col">
+            <nav id="breadcrumbs-container" class="text-sm text-slate-500 mb-4 flex-none"></nav>
 
-            <div class="grid grid-cols-3 gap-6 h-full">
+            <div class="grid grid-cols-3 gap-6 flex-1 min-h-0">
                 <!-- Main Note Display Area (2/3 width) -->
-                <div class="col-span-2 flex flex-col h-full">
-                    <h2 id="note-display-title" class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">Select a Note</h2>
-                    <div id="note-content" class="markdown-content bg-white p-6 rounded-xl shadow-sm text-base leading-relaxed flex-1">
+                <div class="col-span-2 flex flex-col min-h-0">
+                    <h2 id="note-display-title" class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2 flex-none">Select a Note</h2>
+                    <div id="note-content" class="markdown-content bg-white p-6 rounded-xl shadow-sm text-base leading-relaxed flex-1 overflow-y-auto">
                         <p>Select a note from the left panel to display its content.</p>
                     </div>
                 </div>
 
                 <!-- Right Chat/LLM Placeholder Panel (1/3 width) -->
-                <div id="chat-panel" class="col-span-1 p-6 rounded-xl shadow-sm flex flex-col h-full">
-                    <h3 class="text-2xl font-bold text-teal-700 mb-4">Chat/AI Assistant</h3>
-                    <div class="flex-1 p-3 rounded-lg border text-sm">
+                <div id="chat-panel" class="col-span-1 bg-white p-6 rounded-xl shadow-sm flex flex-col min-h-0">
+                    <h3 class="text-2xl font-bold text-teal-700 mb-4 flex-none">Chat/AI Assistant</h3>
+                    <div class="flex-1 p-3 rounded-lg border text-sm overflow-y-auto">
                         <p>This panel can be used for chat or AI interactions.</p>
                         <p class="mt-2 italic">Future LLM integration will go here.</p>
                     </div>
-                    <div class="mt-4">
-                        <input type="text" placeholder="Type your message..." class="w-full p-2 border rounded-md text-sm focus:ring-amber-400 focus:border-amber-400">
-                        <button class="w-full mt-2 bg-amber-600 text-white py-2 rounded-md hover:bg-amber-700 transition shadow text-sm">Send</button>
+                    <div class="mt-4 flex-none">
+                        <input type="text" placeholder="Type your message..." class="w-full p-2 border rounded-md text-sm">
+                        <button class="w-full mt-2 bg-amber-600 text-white py-2 rounded-md hover:bg-amber-700">Send</button>
                     </div>
                 </div>
             </div>
-
         </main>
     </div>
 
-    <!-- Firebase and other core modules loaded at the end of the body for DOM readiness -->
+    <!-- MODIFIED: Removed the inline script that set window properties -->
+    <!-- Theme variables are now applied via an inline script for speed -->
     <script type="module">
-        // Export noteFiles to the global window object for marked.js
-        import { noteFiles } from './data-constants.js';
-        window.noteFiles = noteFiles;
-
-        // Dynamically load theme variables from appearance-settings.js
         import { colorThemes, markdownFontSizes } from './appearance-settings.js';
-
-        // Apply theme variables to :root based on current data-theme
-        const htmlElement = document.documentElement;
-        const currentTheme = htmlElement.getAttribute('data-theme') || 'light'; // Default to light
-        const themeVariables = colorThemes[currentTheme];
-
-        for (const [prop, value] of Object.entries(themeVariables)) {
+        const theme = colorThemes[document.documentElement.getAttribute('data-theme') || 'light'];
+        for (const [prop, value] of Object.entries(theme)) {
             document.documentElement.style.setProperty(prop, value);
         }
-
-        // Apply font sizes
         for (const [key, value] of Object.entries(markdownFontSizes)) {
             document.documentElement.style.setProperty(`--font-${key}`, value);
         }
     </script>
+    
+    <!-- All modules are now self-contained and import their own dependencies -->
     <script type="module" src="./firebase-init.js"></script>
     <script type="module" src="./markdown-parser.js"></script>
     <script type="module" src="./note-library-manager.js"></script>

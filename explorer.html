@@ -4,134 +4,103 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kedem: The Explorer</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Marked.js for Markdown parsing (MUST be loaded before markdown-parser.js) -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     
-    <!-- Fonts and general styles -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
+        /* General body styles */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc; /* slate-50 */
             color: #334155; /* slate-700 */
         }
+        /* Custom Scrollbar Styles */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #e2e8f0; } /* slate-200 */
         ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; } /* slate-400 */
         ::-webkit-scrollbar-thumb:hover { background: #64748b; } /* slate-500 */
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
-            height: 250px;
-            max-height: 300px;
-        }
-        @media (min-width: 768px) {
-            .chart-container { height: 300px; max-height: 350px; }
-        }
-        .nav-link.active {
+
+        /* Navigation Link Styles */
+        .nav-link.active, .sidebar-active-text {
             background-color: #fbbf24; /* amber-400 */
             color: #1e293b; /* slate-800 */
             font-weight: 600;
         }
-        .content-section {
-            display: none;
+
+        /* Sidebar active text specific styling */
+        .sidebar-active-text {
+             display: block;
+             padding: 0.5rem 1rem;
+             border-radius: 0.5rem;
+             user-select: none;
         }
-        .content-section.active {
-            display: block;
-        }
+
+        /* Content Section Display */
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+
+        /* Deity Card Styles */
         .deity-card {
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-            cursor: pointer; /* Indicate clickable */
+            cursor: pointer;
         }
         .deity-card:hover {
             transform: translateY(-4px);
             box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
         }
+
+        /* Modal Styles */
         .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 50; /* Tailwind z-50 */
-            opacity: 0;
-            visibility: hidden;
+            display: flex; justify-content: center; align-items: center;
+            z-index: 50; opacity: 0; visibility: hidden;
             transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
         }
-        .modal-overlay.open {
-            opacity: 1;
-            visibility: visible;
-        }
+        .modal-overlay.open { opacity: 1; visibility: visible; }
         .modal-content {
-            background-color: #fff;
-            padding: 2.5rem; /* p-10 */
-            border-radius: 1rem; /* rounded-xl */
+            background-color: #fff; padding: 2.5rem; border-radius: 1rem;
             box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-            max-width: 800px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-            position: relative;
-            color: #334155;
+            max-width: 800px; width: 90%; max-height: 90vh;
+            overflow-y: auto; position: relative; color: #334155;
             transform: translateY(20px);
             transition: transform 0.3s ease-in-out;
         }
-        .modal-overlay.open .modal-content {
-            transform: translateY(0);
-        }
+        .modal-overlay.open .modal-content { transform: translateY(0); }
         .modal-close-button {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #64748b; /* slate-500 */
+            position: absolute; top: 1rem; right: 1rem;
+            background: none; border: none; font-size: 1.5rem;
+            cursor: pointer; color: #64748b;
             transition: color 0.2s;
         }
-        .modal-close-button:hover {
-            color: #1e293b; /* slate-800 */
-        }
+        .modal-close-button:hover { color: #1e293b; }
+
+        /* Editable Field Styles */
         .editable-field {
-            width: 100%;
-            padding: 0.5rem;
-            margin-top: 0.25rem;
-            border: 1px solid #cbd5e1; /* slate-300 */
-            border-radius: 0.375rem; /* rounded-md */
+            width: 100%; padding: 0.5rem; margin-top: 0.25rem;
+            border: 1px solid #cbd5e1; border-radius: 0.375rem;
         }
         .editable-field:focus {
-            outline: none;
-            border-color: #fbbf24; /* amber-400 */
-            box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2); /* amber-400 with opacity */
+            outline: none; border-color: #fbbf24;
+            box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2);
         }
+        
+        /* Loading Overlay Styles */
         .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(255, 255, 255, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            font-size: 1.5rem;
-            color: #1e293b;
+            display: flex; justify-content: center; align-items: center;
+            z-index: 100; font-size: 1.5rem; color: #1e293b;
         }
-        /* Minimal markdown content styles for this page, as detailed notes are in Note Library */
+
+        /* Minimal markdown styles */
         .markdown-content p { margin-bottom: 0.75rem; line-height: 1.6; }
         .markdown-content b, .markdown-content strong { font-weight: 700; }
         .markdown-content em, .markdown-content i { font-style: italic; }
@@ -139,36 +108,18 @@
 </head>
 <body class="antialiased">
 
-    <!-- Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay hidden">
         Loading data...
     </div>
 
     <div class="flex h-screen bg-slate-50">
-        <!-- Sidebar Navigation -->
-        <aside class="w-64 bg-slate-800 text-slate-100 flex flex-col fixed h-full">
-            <div class="h-16 flex items-center justify-center border-b border-slate-700">
-                <a href="explorer.html#world" id="home-link" class="text-2xl font-bold text-amber-400 hover:text-amber-300 transition-colors duration-200">Kedem Anvil</a>
-            </div>
-            <nav class="flex-1 px-4 py-4 space-y-2">
-                <a href="explorer.html#world" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">The World</a>
-                <a href="explorer.html#pantheon" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">The Pantheon</a>
-                <a href="explorer.html#bestiary" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Bestiary</a>
-                <a href="explorer.html#gameplay" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Gameplay & Mechanics</a>
-                <a href="note-library.html" class="nav-link flex items-center px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-slate-700">Note Library</a>
-            </nav>
-            <!-- Auth controls are now dynamically added by ui-manager.js, removing static User ID display -->
-        </aside>
+        <!-- Sidebar is now a placeholder that will be loaded dynamically -->
+        <div id="sidebar-placeholder"></div>
 
-        <!-- Main Content -->
         <main class="flex-1 ml-64 p-6 sm:p-8 lg:p-12 overflow-y-auto">
-            <!-- Breadcrumbs will be injected here -->
-            <nav id="breadcrumbs-container" class="text-sm text-slate-500 mb-4">
-                <!-- Breadcrumbs will be dynamically inserted here by JavaScript -->
-            </nav>
+            <nav id="breadcrumbs-container" class="text-sm text-slate-500 mb-4"></nav>
 
-            <!-- World Section -->
-            <section id="world" class="content-section active"> <!-- Set 'world' as active by default -->
+            <section id="world" class="content-section active">
                 <h2 class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">The World of Kedem</h2>
                 <div class="space-y-8">
                     <div class="bg-white p-6 rounded-xl shadow-sm">
@@ -177,24 +128,23 @@
                     </div>
 
                     <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="2xl font-bold text-teal-700 mb-4">The Nature of Humans</h3>
+                        <h3 class="text-2xl font-bold text-teal-700 mb-4">The Nature of Humans</h3>
                         <p class="text-base leading-relaxed mb-4">Humans, the player characters, are a unique and unnatural presence in Kedem. Created by the Titan Prometheus, they were fashioned with a 60% godlike and 40% ape essence, a direct violation of the established 40/60 ratio for other humanoids. This forbidden act granted humans partial immortality (the in-game respawn mechanic), stronger souls, and a profound degree of free will.</p>
                         <p class="text-base leading-relaxed">Because they do not truly die, their souls are not reabsorbed into the life cycle of Gaia, the Earth primordial. This fundamental break from the natural order makes their existence both a potential blessing for the world and a grave danger to its cosmic balance.</p>
                     </div>
 
                     <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="2xl font-bold text-teal-700 mb-4">Mana and Sentience</h3>
+                        <h3 class="text-2xl font-bold text-teal-700 mb-4">Mana and Sentience</h3>
                         <p class="text-base leading-relaxed">Mana is the fundamental energy of creation. Particles of mana are naturally attracted to each other and to mass, forming vast clouds of energy that eventually coalesce into consciousness, a spirit, or a soul. The larger and denser an entity—be it a star, a mountain, or a living being—the greater its mana concentration, and thus its potential for intelligence and magical power. This principle explains why cosmic bodies like Gaia and the Sun are sentient, and why colossal beings like Dragons and Titans are innately magical, capable of bending reality through sheer will. Mortals, with their limited mana, must rely on spells, rituals, and artifacts to channel this power.</p>
                     </div>
 
                     <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="2xl font-bold text-teal-700 mb-4">Inspirations</h3>
+                        <h3 class="text-2xl font-bold text-teal-700 mb-4">Inspirations</h3>
                         <p class="text-base leading-relaxed">The design of Kedem is influenced by a diverse range of sources, blending sandbox survival elements from games like <b class="font-semibold text-amber-700">Ark</b> and <b class="font-semibold text-amber-700">Valheim</b>, player-driven emergent gameplay from <b class="font-semibold text-amber-700">Rust</b>, and the deep, immersive worlds of RPGs like <b class="font-semibold text-amber-700">Skyrim</b>. Literary influences include the intuitive magic systems of Christopher Paolini's <b class="font-semibold text-amber-700">Inheritance Cycle</b> and the cosmic horror of Lovecraftian mythology, all woven together with threads from Greek, Norse, and Egyptian myths.</p>
                     </div>
                 </div>
             </section>
 
-            <!-- Pantheon Section -->
             <section id="pantheon" class="content-section">
                 <h2 class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">The Pantheon</h2>
                 <div class="bg-white p-6 rounded-xl shadow-sm mb-6">
@@ -207,19 +157,17 @@
                     </div>
                 </div>
                 <div id="deity-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    <!-- Deity cards will be injected here by JavaScript -->
                 </div>
             </section>
 
-            <!-- Bestiary Section -->
             <section id="bestiary" class="content-section">
-                <h2 class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">Bestiary</h2>
+                 <h2 class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">Bestiary</h2>
                  <div class="bg-white p-6 rounded-xl shadow-sm mb-6">
                     <p class="text-base leading-relaxed">The world of Kedem is populated by a wide array of creatures, from natural wildlife to magically engineered humanoids and colossal Titans. Many of these beings were created by the gods for a specific purpose, and understanding their origins and behaviors is key to survival and mastery. This section details some of the known inhabitants of the world.</p>
                 </div>
                 <div class="space-y-8">
                     <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="2xl font-bold text-teal-700 mb-4">Engineered Humanoids</h3>
+                        <h3 class="text-2xl font-bold text-teal-700 mb-4">Engineered Humanoids</h3>
                         <div class="grid md:grid-cols-2 gap-8">
                             <div>
                                 <h4 class="text-xl font-semibold mb-2">Goblins</h4>
@@ -232,37 +180,32 @@
                         </div>
                     </div>
                     <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="2xl font-bold text-teal-700 mb-4">Titans</h3>
+                        <h3 class="text-2xl font-bold text-teal-700 mb-4">Titans</h3>
                         <p class="text-base leading-relaxed">Gigantic beings of immense power, Titans were originally created by Gaia as her first protectors. Some, however, have fallen to the chaotic influence of the Outer Gods. Titans often embody the raw forces of nature—mountains, oceans, storms, and more. Once vanquished, they do not truly die, but slowly reform over vast spans of time, their essence forever part of the world they shape.</p>
                     </div>
                 </div>
             </section>
 
-            <!-- Gameplay Section -->
             <section id="gameplay" class="content-section">
-                <h2 class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">Gameplay & Mechanics</h2>
+                 <h2 class="text-4xl font-bold text-slate-800 mb-6 border-b-4 border-amber-400 pb-2">Gameplay & Mechanics</h2>
                  <div class="bg-white p-6 rounded-xl shadow-sm mb-6">
                     <p class="text-base leading-relaxed">Kedem's mechanics are built around the core pillars of player freedom and power fantasy. The systems are designed to be intuitive yet deep, allowing for diverse playstyles to emerge. From the progression of a naked survivor to a legendary hero, every mechanic is tied to the world's lore. This section explores the core gameplay loops, player attributes, and magic systems.</p>
                 </div>
                 <div class="space-y-8">
                     <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="2xl font-bold text-teal-700 mb-4">Player Progression: A Hero's Journey</h3>
+                        <h3 class="text-2xl font-bold text-teal-700 mb-4">Player Progression: A Hero's Journey</h3>
                         <div class="relative pl-8">
-                            <!-- Timeline Line -->
                             <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-300"></div>
-                            <!-- Early Game -->
                             <div class="mb-8 relative">
                                 <div class="absolute left-[-2.3rem] top-1 w-8 h-8 bg-amber-400 rounded-full border-4 border-white"></div>
                                 <h4 class="text-xl font-semibold mb-1">Early Game: Survival</h4>
                                 <p class="text-base">Players begin naked and vulnerable, gathering basic resources to craft tools, build shelter, and fend off creatures of the night. This phase is about pure survival and taking the first steps by choosing a divine blessing.</p>
                             </div>
-                            <!-- Mid Game -->
                             <div class="mb-8 relative">
                                 <div class="absolute left-[-2.3rem] top-1 w-8 h-8 bg-amber-400 rounded-full border-4 border-white"></div>
                                 <h4 class="text-xl font-semibold mb-1">Mid Game: Establishment</h4>
                                 <p class="text-base">Focus shifts to building advanced bases, acquiring steel weapons and armor, and engaging more deeply with the gods by fulfilling their requests. Alliances and trade with other players become crucial.</p>
                             </div>
-                            <!-- End Game -->
                             <div class="relative">
                                 <div class="absolute left-[-2.3rem] top-1 w-8 h-8 bg-amber-400 rounded-full border-4 border-white"></div>
                                 <h4 class="text-xl font-semibold mb-1">End Game: Power Fantasy</h4>
@@ -272,15 +215,15 @@
                     </div>
 
                     <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="2xl font-bold text-teal-700 mb-4">Player Attributes</h3>
-                        <div class="chart-container">
+                        <h3 class="text-2xl font-bold text-teal-700 mb-4">Player Attributes</h3>
+                        <div class="chart-container" style="position: relative; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; height: 300px; max-height: 350px;">
                             <canvas id="attributesChart"></canvas>
                         </div>
                         <p class="text-center mt-4 text-sm text-slate-500">Visualization of core player resource relationships.</p>
                     </div>
 
                     <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="2xl font-bold text-teal-700 mb-4">Magic Systems</h3>
+                        <h3 class="text-2xl font-bold text-teal-700 mb-4">Magic Systems</h3>
                          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <div class="bg-slate-50 p-4 rounded-lg">
                                 <h4 class="font-bold text-lg text-amber-700">Sorcerer</h4>
@@ -302,11 +245,10 @@
                     </div>
                 </div>
             </section>
-
         </main>
     </div>
 
-    <!-- Deity Detail Modal -->
+    <!-- Deity Modal -->
     <div id="deity-modal" class="modal-overlay">
         <div class="modal-content">
             <button class="modal-close-button" id="deity-modal-close-button">&times;</button>
@@ -316,7 +258,6 @@
                 <div id="modal-deity-tags" class="flex flex-wrap gap-2 mb-4"></div>
                 <div id="modal-deity-description-rendered" class="markdown-content text-base text-slate-600 leading-relaxed"></div>
                 <div id="modal-deity-additional-rendered" class="mt-4 space-y-2 text-base text-slate-700 markdown-content">
-                    <!-- Additional structured details like offerings, favors, boons will go here -->
                 </div>
                 <div class="mt-6 flex justify-end">
                     <button id="deity-modal-edit-button" class="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition shadow">Edit</button>
@@ -354,13 +295,7 @@
         </div>
     </div>
 
-    <!-- Firebase and other core modules loaded at the end of the body for DOM readiness -->
-    <script type="module">
-        // Export initialDeityDataFallback and noteFiles to the global window object for marked.js
-        import { initialDeityDataFallback, noteFiles } from './data-constants.js'; 
-        window.initialDeityDataFallback = initialDeityDataFallback;
-        window.noteFiles = noteFiles; 
-    </script>
+    <!-- All modules are now self-contained and import their own dependencies -->
     <script type="module" src="./firebase-init.js"></script>
     <script type="module" src="./markdown-parser.js"></script>
     <script type="module" src="./deity-manager.js"></script>
