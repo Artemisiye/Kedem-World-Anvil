@@ -7,13 +7,13 @@
 
 // Font sizes for markdown headings (in pixels)
 export const markdownFontSizes = {
-    h1: '24px',
-    h2: '18px',
-    h3: '13.5px',
-    h4: '12px',
-    h5: '10px',
-    h6: '7.5px',
-    normalText: '12px'
+    h1: '32px',
+    h2: '24px',
+    h3: '18px',
+    h4: '16px',
+    h5: '13px',
+    h6: '10px',
+    normalText: '16px'
 };
 
 // Color theme variables (base for light/dark mode)
