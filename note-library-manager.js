@@ -2,6 +2,7 @@
 
 import { noteFiles } from './data-constants.js';
 import { markedInstance } from './markdown-parser.js';
+// Removed markdownFontSizes import as it's now applied directly via CSS variables
 
 export function setupNoteLibrary(loadingOverlay, noteList, noteContentElement, noteDisplayMainTitle) {
     noteList.innerHTML = '';
@@ -125,7 +126,7 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
     if (noteContentElement) noteContentElement.innerHTML = '';
 
     const githubBasePath = `https://raw.githubusercontent.com/Artemisiye/Kedem-World-Anvil/main/notes/`;
-    const fullUrl = `${githubBasePath}${filePath}`; // filePath should already be correctly decoded here (from ui-manager)
+    const fullUrl = `${githubBasePath}${filePath}`;
     const displayName = filePath.split('/').pop().replace('.md', '').replace(/([A-Z])/g, ' $1').trim();
 
     try {
@@ -165,7 +166,6 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                     const aliases = line.substring('aliases:'.length).trim();
                     if (aliases) {
                         // Remove leading hyphen from alias if it's a list
-                        // Use a custom parser or regex to handle Obsidian's array-like aliases
                         const cleanAliases = aliases.replace(/^- /, '');
                         propertiesHtml += `
                             <div class="properties-item">
@@ -177,7 +177,6 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                     }
                 } else if (line.startsWith('tags:')) {
                     const tagsContent = line.substring('tags:'.length).trim();
-                    // Split tags by space, comma, or hyphen, then filter out empty strings/hyphens
                     const tags = tagsContent.split(/[\s,-]+/).map(t => t.trim()).filter(t => t && t !== '-');
                     if (tags.length > 0) {
                         propertiesHtml += `
@@ -191,8 +190,9 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                         hasProperties = true;
                     }
                 }
-                 // Generic property handler for key:: value
-                 else if (line.includes('::')) {
+                // For other content within frontmatter that's not a standard property, add as a metadata line
+                // Keeping a generic fallback for other potential metadata types if they appear
+                else if (line.includes('::')) {
                     const [propName, propValue] = line.split('::', 2).map(s => s.trim());
                     if (propName && propValue) {
                         propertiesHtml += `
@@ -204,10 +204,10 @@ export async function fetchAndDisplayNote(filePath, loadingOverlay, noteContentE
                         hasProperties = true;
                     }
                 }
-                // For other content within frontmatter that's not a standard property, add as a metadata line
                 else if (line.trim() !== '') {
-                    propertiesHtml += `<p class="metadata-line">${markedInstance.parseInline(line.trim())}</p>`;
-                    hasProperties = true;
+                    // This catches things like descriptions directly under '---' if not a key::value
+                    // propertiesHtml += `<p class="metadata-line">${markedInstance.parseInline(line.trim())}</p>`;
+                    // hasProperties = true; // Not strictly a "property" but still content from frontmatter
                 }
             } else {
                 // If not in frontmatter, add the line to be parsed as standard markdown
