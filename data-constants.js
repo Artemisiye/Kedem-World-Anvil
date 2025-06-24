@@ -314,5 +314,6 @@ export const noteFiles = [
     "World Building/Regions/Olympus.md",
     "World Building/Regions/Styx River.md",
     "World Building/Regions/Tundra (The Barren Expanse).md",
-    "z Misc/Lumen Command.md"
+    "z Misc/Lumen Command.md",
+    "Title.md"
 ];
