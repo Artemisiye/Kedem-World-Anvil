@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kedem World Anvil - The First Age</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,700;1,400&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom Styles & Color Palette -->
+    <style>
+        /* Dawn of Antiquity Color Palette */
+        :root {
+            --bg-midnight: #1A1A2E;
+            --text-parchment: #E0D8B0;
+            --accent-gold: #F0A500;
+            --accent-magenta: #A74463;
+            --ui-slate: #4E4E6A;
+            --ui-slate-darker: #38384d;
+        }
+
+        body {
+            background-color: var(--bg-midnight);
+            color: var(--text-parchment);
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Using Garamond for the main article text for a "tome" feel */
+        .font-serif-body {
+            font-family: 'EB Garamond', serif;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--ui-slate-darker);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--ui-slate);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5a5a7e;
+        }
+        
+        /* Custom styles for wiki-style links */
+        .wiki-link {
+            color: var(--accent-gold);
+            background-color: rgba(240, 165, 0, 0.08);
+            padding: 0 4px;
+            border-radius: 4px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .wiki-link:hover {
+            background-color: rgba(240, 165, 0, 0.2);
+            text-decoration: none;
+        }
+
+        /* Sidebar folder/file tree styling */
+        .file-tree details summary {
+            cursor: pointer;
+            list-style: none; /* Hide default triangle */
+        }
+        .file-tree details summary::-webkit-details-marker {
+            display: none; /* Hide default triangle in Safari */
+        }
+        .file-tree summary:hover {
+            background-color: var(--ui-slate-darker);
+        }
+        .file-tree details[open] > summary .folder-icon .closed,
+        .file-tree details:not([open]) > summary .folder-icon .open {
+            display: none;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="flex h-screen overflow-hidden">
+        <!-- Mobile menu button -->
+        <button id="mobile-menu-button" class="lg:hidden fixed bottom-4 right-4 z-50 p-3 rounded-full bg-slate-700 text-parchment shadow-lg">
+             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+            </svg>
+        </button>
+
+        <!-- Left Sidebar (Navigation) -->
+        <aside id="left-sidebar" class="w-72 bg-opacity-50 backdrop-blur-sm transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out fixed lg:static h-full z-40" style="background-color: rgba(26, 26, 46, 0.7);">
+            <div class="flex flex-col h-full border-r border-slate-700">
+                <!-- Logo and Title -->
+                <div class="p-4 flex items-center space-x-3 border-b border-slate-700">
+                    <svg class="h-8 w-8 text-gold" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="color: var(--accent-gold);">
+                        <path d="M50 10C27.9086 10 10 27.9086 10 50C10 72.0914 27.9086 90 50 90C72.0914 90 90 72.0914 90 50C90 27.9086 72.0914 10 50 10Z" stroke="currentColor" stroke-width="4"/>
+                        <path d="M50 90V75M50 10V25M10 50H25M90 50H75" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+                        <path d="M32.2218 32.2218L42.8284 42.8284M67.7782 67.7782L57.1716 57.1716" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+                    </svg>
+                    <span class="text-2xl font-bold tracking-wider text-parchment">Kedem</span>
+                </div>
+                
+                <!-- Search -->
+                <div class="p-4">
+                    <input type="text" placeholder="Search the archives..." class="w-full bg-slate-800 text-parchment placeholder-slate-400 border border-slate-600 rounded-md p-2 focus:ring-2 focus:ring-gold focus:outline-none transition" style="--tw-ring-color: var(--accent-gold);">
+                </div>
+
+                <!-- File Tree -->
+                <nav class="flex-1 overflow-y-auto px-4 pb-4 file-tree">
+                    <ul class="space-y-1">
+                        <!-- Characters -->
+                        <li>
+                            <details open>
+                                <summary class="flex items-center space-x-2 p-2 rounded-md font-semibold text-parchment">
+                                    <span class="folder-icon">
+                                        <svg class="w-5 h-5 text-slate-400 open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" /></svg>
+                                        <svg class="w-5 h-5 text-slate-400 closed" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                                    </span>
+                                    <span>Characters</span>
+                                </summary>
+                                <ul class="pl-4 mt-1 space-y-1">
+                                    <li><a href="#" class="flex items-center space-x-2 p-2 rounded-md hover:bg-slate-700">
+                                        <svg class="w-4 h-4 text-slate-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 11-2 0V4H6v12a1 1 0 11-2 0V4z" clip-rule="evenodd" /></svg>
+                                        <span>Aethel the Star-Seeker</span>
+                                    </a></li>
+                                    <li><a href="#" class="flex items-center space-x-2 p-2 rounded-md hover:bg-slate-700">
+                                         <svg class="w-4 h-4 text-slate-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 11-2 0V4H6v12a1 1 0 11-2 0V4z" clip-rule="evenodd" /></svg>
+                                        <span>Lord Malakor</span></a>
+                                    </li>
+                                </ul>
+                            </details>
+                        </li>
+                        <!-- History (Active Section) -->
+                        <li>
+                            <details open>
+                                <summary class="flex items-center space-x-2 p-2 rounded-md font-semibold text-parchment bg-slate-700">
+                                    <span class="folder-icon">
+                                        <svg class="w-5 h-5 text-slate-400 open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" /></svg>
+                                        <svg class="w-5 h-5 text-slate-400 closed" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                                    </span>
+                                    <span>History</span>
+                                </summary>
+                                <ul class="pl-4 mt-1 space-y-1">
+                                    <li><a href="#" class="flex items-center space-x-2 p-2 rounded-md text-gold bg-slate-800 font-semibold" style="color:var(--accent-gold); background-color:var(--ui-slate-darker);">
+                                         <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 11-2 0V4H6v12a1 1 0 11-2 0V4z" clip-rule="evenodd" /></svg>
+                                        <span>The First Age</span></a>
+                                    </li>
+                                    <li><a href="#" class="flex items-center space-x-2 p-2 rounded-md hover:bg-slate-700">
+                                         <svg class="w-4 h-4 text-slate-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 11-2 0V4H6v12a1 1 0 11-2 0V4z" clip-rule="evenodd" /></svg>
+                                        <span>The Sundering</span></a>
+                                    </li>
+                                </ul>
+                            </details>
+                        </li>
+                         <!-- Locations -->
+                        <li>
+                            <details>
+                                <summary class="flex items-center space-x-2 p-2 rounded-md font-semibold text-parchment">
+                                    <span class="folder-icon">
+                                        <svg class="w-5 h-5 text-slate-400 open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" /></svg>
+                                        <svg class="w-5 h-5 text-slate-400 closed" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                                    </span>
+                                    <span>Locations</span>
+                                </summary>
+                                <!-- This folder is closed by default -->
+                            </details>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Center Column (Content) -->
+        <main class="flex-1 overflow-y-auto p-6 lg:p-10">
+            <div class="max-w-4xl mx-auto">
+                <!-- Breadcrumbs -->
+                <div class="text-sm text-slate-400 mb-4">
+                    <a href="#" class="hover:text-gold" style="--hover-text-color: var(--accent-gold);">History</a>
+                    <span> / </span>
+                    <span class="text-parchment">The First Age</span>
+                </div>
+
+                <!-- Main Article -->
+                <article class="font-serif-body">
+                    <h1 class="text-4xl lg:text-5xl font-bold mb-2" style="color: var(--accent-gold);">The First Age of Light</h1>
+                    <div class="text-sm text-slate-400 mb-8">
+                        <span>Last updated: June 26, 2025</span> | <span>Tags: <a href="#" class="text-magenta hover:underline" style="color: var(--accent-magenta);">Era</a>, <a href="#" class="text-magenta hover:underline" style="color: var(--accent-magenta);">Creation</a></span>
+                    </div>
+
+                    <p class="text-lg leading-relaxed mb-6">
+                        The First Age, often called the Age of Light, marks the dawn of recorded history, a time when the world was young and bathed in raw, untamed magic. It was an era of creation and immense possibility, preceding the great cataclysm known as <a href="#" class="wiki-link">[[The Sundering]]</a>. The great <a href="#" class="wiki-link">[[Aethel the Star-Seeker]]</a> theorized that during this period, the planes were more closely aligned, allowing for unprecedented flows of mana.
+                    </p>
+                    
+                    <blockquote class="border-l-4 border-magenta italic text-slate-300 px-6 py-4 my-8 bg-slate-800 rounded-r-lg" style="border-color: var(--accent-magenta);">
+                        "To look upon the works of the First Age is to see the dreams of gods made manifest in stone and light. We are but children playing with the echoes of their power."
+                        <cite class="block not-italic mt-2 text-right">— Inscription from the Sunken City of Oakhaven</cite>
+                    </blockquote>
+
+                    <h2 class="text-3xl font-bold mt-12 mb-4 text-gold" style="color: var(--accent-gold);">The Rise of the Elder Races</h2>
+                    <p class="text-lg leading-relaxed mb-6">
+                        It was during this epoch that the so-called Elder Races walked the land. Unlike the mortal races of the current age, they were beings of immense longevity and power, said to be shaped by the very essence of creation. The Luminai, masters of light and order, built crystalline cities that pierced the clouds. In the deep earth, the Geodes, beings of living stone, carved out intricate subterranean kingdoms. Their interactions, both peaceful and violent, shaped the very geography of the world.
+                    </p>
+                    
+                    <h2 class="text-3xl font-bold mt-12 mb-4 text-gold" style="color: var(--accent-gold);">The Seeds of Conflict</h2>
+                    <p class="text-lg leading-relaxed mb-6">
+                        Yet, this idyllic age was not without its shadows. The same raw magic that fueled creation also gave rise to entities of chaos and void. The rise of <a href="#" class="wiki-link">[[Lord Malakor]]</a> and his armies of shadow marked the beginning of the end for this era. His corrupting influence began to twist the fabric of magic, leading to the devastating conflict that would eventually trigger [[The Sundering]].
+                    </p>
+                </article>
+
+                <!-- Backlinks -->
+                <div class="mt-16 pt-8 border-t border-slate-700">
+                    <h3 class="text-2xl font-bold text-parchment mb-4">Backlinks & Mentions</h3>
+                    <div class="space-y-3">
+                        <a href="#" class="block p-4 bg-slate-800 hover:bg-slate-700 rounded-lg transition">
+                            <h4 class="font-semibold text-gold" style="color: var(--accent-gold);">Aethel the Star-Seeker</h4>
+                            <p class="text-sm text-slate-400 mt-1">...much of our knowledge of the <span class="bg-gold/20 text-parchment rounded px-1" style="background-color:rgba(240, 165, 0, 0.2);">First Age</span> comes from fragments of their research into the primordial aether...</p>
+                        </a>
+                         <a href="#" class="block p-4 bg-slate-800 hover:bg-slate-700 rounded-lg transition">
+                            <h4 class="font-semibold text-gold" style="color: var(--accent-gold);">The Sundering</h4>
+                            <p class="text-sm text-slate-400 mt-1">The great cataclysm that ended the <span class="bg-gold/20 text-parchment rounded px-1" style="background-color:rgba(240, 165, 0, 0.2);">First Age</span>, tearing the planes apart and scattering the Elder Races...</p>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+        <!-- Right Sidebar (Context) -->
+        <aside class="w-80 hidden xl:block p-6 bg-opacity-50 backdrop-blur-sm h-full border-l border-slate-700" style="background-color: rgba(26, 26, 46, 0.7);">
+            <div class="sticky top-6">
+                <!-- Infobox -->
+                <div class="bg-slate-800 rounded-lg border border-slate-700 mb-8">
+                    <h3 class="text-lg font-bold p-3 border-b border-slate-700 text-gold" style="color: var(--accent-gold);">Infobox: The First Age</h3>
+                    <div class="p-4 text-sm space-y-3">
+                        <div class="flex justify-between">
+                            <span class="font-semibold text-slate-400">Alias:</span>
+                            <span>Age of Light</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="font-semibold text-slate-400">Duration:</span>
+                            <span>~10,000 years</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="font-semibold text-slate-400">Ended by:</span>
+                            <a href="#" class="text-magenta hover:underline" style="color: var(--accent-magenta);">The Sundering</a>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="font-semibold text-slate-400">Key Races:</span>
+                            <span>Luminai, Geodes</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table of Contents -->
+                <div class="mb-8">
+                     <h3 class="text-lg font-bold mb-3 text-parchment">Table of Contents</h3>
+                     <ul class="space-y-2 text-sm">
+                         <li><a href="#" class="text-slate-400 hover:text-gold transition">The Rise of the Elder Races</a></li>
+                         <li><a href="#" class="text-slate-400 hover:text-gold transition">The Seeds of Conflict</a></li>
+                     </ul>
+                </div>
+                
+                <!-- Graph View Placeholder -->
+                <div>
+                    <h3 class="text-lg font-bold mb-3 text-parchment">Connections Graph</h3>
+                    <div class="aspect-square bg-slate-800 border border-slate-700 rounded-lg flex items-center justify-center text-slate-500 text-center p-4">
+                        <p>Interactive graph showing connections to [[Aethel]], [[Malakor]], etc. would be rendered here using D3.js or a similar library.</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+    
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden"></div>
+
+
+    <script>
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const leftSidebar = document.getElementById('left-sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+        function toggleSidebar() {
+            leftSidebar.classList.toggle('-translate-x-full');
+            sidebarOverlay.classList.toggle('hidden');
+        }
+
+        mobileMenuButton.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+        
+        // Make folder tree summaries clickable
+        const folderSummaries = document.querySelectorAll('.file-tree summary');
+        folderSummaries.forEach(summary => {
+            summary.addEventListener('click', (e) => {
+                const detail = summary.parentElement;
+                if(detail.hasAttribute('open')) {
+                    // This timeout is a trick to allow the 'open' attribute to be removed before we re-add it if needed.
+                    // If the user clicks on the text/icon, we want the default behavior.
+                    // If the user clicks on the padded area, we prevent the toggle.
+                    if (e.target === summary) {
+                      e.preventDefault();
+                      detail.removeAttribute('open');
+                    }
+                } else {
+                   if (e.target === summary) {
+                      e.preventDefault();
+                      detail.setAttribute('open','');
+                   }
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>
